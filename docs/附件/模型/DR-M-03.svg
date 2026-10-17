@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="640" viewBox="0 0 1100 640">
+<rect width="100%" height="100%" fill="white"/>
+<g font-family="Microsoft YaHei, sans-serif" fill="#253b50">
+<text x="550.0" y="30.0" text-anchor="middle" dominant-baseline="middle" font-size="22">DR-M-03  课程需求审查：审查任务状态图</text>
+<path d="M 260.0 150 L 450.0 150" fill="none" stroke="#72879a" stroke-width="1.8"/>
+<polygon points="450.0,150 439.0429327162523,154.89312543671485 439.0429327162523,145.10687456328515" fill="#72879a"/>
+<rect x="273.5" y="77.5" width="153" height="38" fill="white" opacity="0.94"/>
+<text x="350" y="90.5" text-anchor="middle" dominant-baseline="middle" font-size="13">DR-ST-01／09</text>
+<text x="350" y="109.5" text-anchor="middle" dominant-baseline="middle" font-size="13">上传首版／新版</text>
+<path d="M 630.0 150 L 810.0 150" fill="none" stroke="#72879a" stroke-width="1.8"/>
+<polygon points="810.0,150 799.0429327162523,154.89312543671485 799.0429327162523,145.10687456328515" fill="#72879a"/>
+<rect x="663.0" y="92.5" width="114" height="38" fill="white" opacity="0.94"/>
+<text x="720" y="105.5" text-anchor="middle" dominant-baseline="middle" font-size="13">DR-ST-02</text>
+<text x="720" y="124.5" text-anchor="middle" dominant-baseline="middle" font-size="13">开始审查</text>
+<path d="M 900 183.0 L 900 417.0" fill="none" stroke="#72879a" stroke-width="1.8"/>
+<polygon points="900,417.0 895.1068745632851,406.0429327162523 904.8931254367149,406.0429327162523" fill="#72879a"/>
+<rect x="843.0" y="277.5" width="114" height="38" fill="white" opacity="0.94"/>
+<text x="900" y="290.5" text-anchor="middle" dominant-baseline="middle" font-size="13">DR-ST-03</text>
+<text x="900" y="309.5" text-anchor="middle" dominant-baseline="middle" font-size="13">形成审查结果</text>
+<path d="M 810.0 150 L 630.0 450" fill="none" stroke="#72879a" stroke-width="1.8"/>
+<polygon points="630.0,450 631.4415441628149,438.08690004966576 639.833185056029,443.1218845855942" fill="#72879a"/>
+<rect x="593.0" y="277.5" width="114" height="38" fill="white" opacity="0.94"/>
+<text x="650" y="290.5" text-anchor="middle" dominant-baseline="middle" font-size="13">DR-ST-04</text>
+<text x="650" y="309.5" text-anchor="middle" dominant-baseline="middle" font-size="13">服务／处理失败</text>
+<rect x="80.0" y="117.0" width="180" height="66" rx="17" fill="#edf4fb" stroke="#356d96" stroke-width="2"/>
+<text x="170" y="150.0" text-anchor="middle" dominant-baseline="middle" font-size="15">未开始</text>
+<rect x="450.0" y="117.0" width="180" height="66" rx="17" fill="#edf4fb" stroke="#356d96" stroke-width="2"/>
+<text x="540" y="150.0" text-anchor="middle" dominant-baseline="middle" font-size="15">待执行</text>
+<rect x="810.0" y="117.0" width="180" height="66" rx="17" fill="#edf4fb" stroke="#356d96" stroke-width="2"/>
+<text x="900" y="150.0" text-anchor="middle" dominant-baseline="middle" font-size="15">执行中</text>
+<rect x="810.0" y="417.0" width="180" height="66" rx="17" fill="#edf4fb" stroke="#356d96" stroke-width="2"/>
+<text x="900" y="450.0" text-anchor="middle" dominant-baseline="middle" font-size="15">已完成</text>
+<rect x="450.0" y="417.0" width="180" height="66" rx="17" fill="#edf4fb" stroke="#356d96" stroke-width="2"/>
+<text x="540" y="450.0" text-anchor="middle" dominant-baseline="middle" font-size="15">失败</text>
+<text x="550.0" y="578.0" text-anchor="middle" dominant-baseline="middle" font-size="13">DR-UC-01、02、04；对象为一次版本的审查任务。DR-ST-01／09 创建首版／新版任务，旧任务保留；失败不等于没有问题。</text>
+<text x="550.0" y="620.0" text-anchor="middle" dominant-baseline="middle" font-size="13">v0.2 · 教学班组织修订 · 待用户复核</text>
+</g>
+</svg>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>双主题需求验证原型</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="engine.js"></script>
+  <script defer src="scenarios.js"></script>
+  <script defer src="classroom.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header><div class="brand">需求验证工作台 <span>模拟原型 v0.2</span></div><p>虚构数据 · 班级作品与场景演示 · 无真实支付、模型调用或服务端授权</p></header>
+  <nav aria-label="系统选择"><button data-system="cp" class="tab active">校园物品流转</button><button data-system="dr" class="tab">课程需求审查</button></nav>
+  <div class="layout">
+    <aside><h2>场景目录</h2><p>正常、权限、状态与异常</p><div id="scenarios"></div></aside>
+    <main>
+      <section id="classroom-panel" hidden aria-labelledby="classroom-title">
+        <h2 id="classroom-title">课程教学班与小组作品（新增模拟）</h2>
+        <p>教师可查看所负责教学班的全部小组；学生仅查看本组作品。下方角色与“本步操作”的角色共用。内容与候选均为预置，复核仅保存在本次内存中。</p>
+        <div class="controls"><label>当前演示身份<select id="classroom-actor"></select></label><label>可访问的课程教学班<select id="classroom-select"></select></label><button id="classroom-reset" class="secondary">重置班级示例</button></div>
+        <p id="classroom-feedback" role="status" aria-live="polite"></p>
+        <div class="table-scroll"><table><thead><tr><th>小组</th><th>作品/提交状态</th><th>最新版本</th><th>待复核/待核实</th><th>操作</th></tr></thead><tbody id="classroom-rows"></tbody></table></div>
+        <div id="work-detail"></div>
+      </section>
+      <div class="heading"><div><p id="scene-id" class="eyebrow"></p><h1 id="title"></h1></div><button id="reset" class="secondary">重置本场景</button></div>
+      <p id="intro" class="intro"></p>
+      <div class="meta"><span id="type"></span><span id="rules"></span></div>
+      <section aria-labelledby="state-title"><h2 id="state-title">当前业务状态（模拟）</h2><div id="state" class="state-grid"></div></section>
+      <section id="document-panel" hidden><h2>预置原文与定位</h2><p>内容来自本原型固定示例；AI 结果为预置候选，不用于证明智能审查准确率。</p><pre id="document"></pre></section>
+      <section class="action-panel" aria-labelledby="action-title">
+        <h2 id="action-title">本步操作</h2><p id="progress"></p>
+        <div class="controls"><label>当前演示角色<select id="actor"></select></label><button id="execute"></button></div>
+        <p id="expected-role"></p><div id="feedback" role="status" aria-live="polite">请选择角色并执行；也可以选择其他角色检查权限拒绝。</div>
+      </section>
+      <section><h2>步骤与观察</h2><ol id="steps"></ol></section>
+      <section><h2>本次点击记录</h2><p>点击记录用于辅助走查。下载后由实际参与者核对，不自动作为人工验证通过证据。</p><button id="download" class="secondary">下载本场景记录</button><div id="log"></div></section>
+      <footer>刷新页面会重置内存中的演示进度；请下载需要保留的记录。本原型仅支持预置场景，不是已完成业务系统。</footer>
+    </main>
+  </div>
+</body>
+</html>
