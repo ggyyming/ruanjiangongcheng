@@ -40,7 +40,8 @@
 
 ```text
 任务：CAMPUS-A；负责人：熊超凡 / @uheuhfue
-分支与 PR：codex/a-uheuhfue → main；基于 main：4b2b135；交付提交：【待填写】
+分支与 PR：codex/a-uheuhfue → main；PR #3 https://github.com/ggyyming/ruanjiangongcheng/pull/3
+基于 main：4b2b135；交付提交：ea5f8b9
 已完成：A0 模型与 M0 接口、A1 认证与物品审核闭环（CP-R-05/06/07/08、CP-D-01/02/03/04/05/10/11/22 相关部分）
 文件与迁移：apps/accounts、apps/catalog 及各自 migrations/0001_initial.py；templates/base.html；config 接线（INSTALLED_APPS、TEMPLATES DIRS、根路由与 items 路由、pyproject per-file-ignores）
 接口：is_verified / can_display / change_availability（签名见共同开发约定 M0）
