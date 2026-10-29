@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}校园物品流转平台{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; color: #222; }
+    nav { background: #2f6f4f; color: #fff; padding: 0.75rem 1rem; display: flex; gap: 1rem; align-items: center; }
+    nav a { color: #fff; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    main { padding: 1rem; max-width: 960px; margin: 0 auto; }
+    .messages li { color: #a33; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">物品市场</a>
+    {% if user.is_authenticated %}
+      <a href="/accounts/">我的账户</a>
+      <form method="post" action="/accounts/logout/" style="margin:0">
+        {% csrf_token %}
+        <button type="submit" style="background:none;border:none;color:#fff;cursor:pointer">退出</button>
+      </form>
+    {% else %}
+      <a href="/accounts/login/">登录</a>
+      <a href="/accounts/register/">注册</a>
+    {% endif %}
+  </nav>
+  <main>
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

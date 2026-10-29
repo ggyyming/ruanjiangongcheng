@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}身份申请详情{% endblock %}
+{% block content %}
+<h2>身份申请详情（CP-D-22：仅申请人及审核管理员可见）</h2>
+<dl>
+  <dt>提交时间</dt><dd>{{ application.created_at|date:"Y-m-d H:i" }}</dd>
+  <dt>姓名</dt><dd>{{ application.name }}</dd>
+  <dt>学号或工号</dt><dd>{{ application.staff_no }}</dd>
+  <dt>院系或部门</dt><dd>{{ application.department }}</dd>
+  <dt>状态</dt><dd>{{ application.get_status_display }}</dd>
+  {% if application.review_reason %}
+    <dt>审核结论/原因</dt><dd>{{ application.review_reason }}</dd>
+  {% endif %}
+  {% if application.reviewed_at %}
+    <dt>审核时间</dt><dd>{{ application.reviewed_at|date:"Y-m-d H:i" }}</dd>
+  {% endif %}
+</dl>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}撤销认证{% endblock %}
+{% block content %}
+<h2>撤销校内认证（CP-D-04）</h2>
+<p>用户：{{ target.username }}。撤销后该用户未预留的公开物品将全部下架，已有流转保留履约入口，恢复参与资格须重新审核。</p>
+<form method="post">
+  {% csrf_token %}
+  <p><label>撤销原因：<textarea name="reason" rows="3" required></textarea></label></p>
+  <button type="submit">确认撤销</button>
+</form>
+{% endblock %}
