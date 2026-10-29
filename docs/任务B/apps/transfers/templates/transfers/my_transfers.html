@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>我的流转</h1>
+<ul>
+  {% for t in transfers %}
+  <li>
+    <a href="{% url 'transfers:transfer_detail' t.id %}">
+      {{ t.item.name }} — {{ t.get_kind_display }} — {{ t.get_status_display }}
+    </a>
+    {% if t.revoke_status == "negotiating" %}（撤销协商中）{% endif %}
+  </li>
+  {% empty %}
+  <li>暂无流转</li>
+  {% endfor %}
+</ul>
+{% endblock %}

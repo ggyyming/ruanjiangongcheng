@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>资金明细（模拟）#{{ transfer.id }}</h1>
+<p>
+  物品：{{ transfer.item.name }}　{{ transfer.get_kind_display }}
+  金额：{% if transfer.amount is not None %}{{ transfer.amount }}{% else %}无（赠送）{% endif %}
+</p>
+
+{% if transfer.kind != "donation" and transfer.status == "reserved" and transfer.revoke_status == "none" %}
+  <form method="post" action="{% url 'payments:pay' transfer.id %}">
+    {% csrf_token %}
+    <button type="submit">发起（模拟）付款</button>
+  </form>
+  <p class="hint">付款为模拟，发起后进入「处理中」，需由受控模拟回执工具才会到账。</p>
+{% endif %}
+
+<h2>资金流水</h2>
+<ul>
+  {% for op in payments %}
+  <li>
+    {{ op.get_kind_display }}（{{ op.get_purpose_display }}）—
+    {{ op.get_status_display }} — 金额 {{ op.amount }}
+  </li>
+  {% empty %}
+  <li>暂无资金流水</li>
+  {% endfor %}
+</ul>
+{% endblock %}
