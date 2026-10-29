@@ -34,6 +34,7 @@ def register(request):
 def home(request):
     context = {
         "verified": is_verified(user_id=request.user.id),
+        "is_staff": request.user.is_staff,
         "applications": request.user.identity_applications.all(),
         "items": request.user.items.select_related("owner"),
     }

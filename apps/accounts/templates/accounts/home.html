@@ -2,16 +2,21 @@
 {% block title %}我的账户{% endblock %}
 {% block content %}
 <h2>我的账户</h2>
-<p>
-  校内认证状态：
-  {% if verified %}<strong>已通过</strong>
-  {% else %}<strong>未通过</strong>（发布物品和申请流转须先通过认证）
+{% if is_staff %}
+  <p><strong>管理员账号</strong>，负责审核校内身份与物品内容，无需校内认证，也不参与买卖。</p>
+{% else %}
+  <p>
+    校内认证状态：
+    {% if verified %}<strong>已通过</strong>
+    {% else %}<strong>未通过</strong>（发布物品和申请流转须先通过认证）
+    {% endif %}
+  </p>
+  {% if not verified %}
+    <p><a href="{% url 'accounts:identity_apply' %}">提交/修改校内身份申请</a></p>
   {% endif %}
-</p>
-{% if not verified %}
-  <p><a href="{% url 'accounts:identity_apply' %}">提交/修改校内身份申请</a></p>
 {% endif %}
 
+{% if not is_staff %}
 <h3>身份申请记录（CP-D-02：历次结果保留）</h3>
 <ul>
   {% for app in applications %}
@@ -23,7 +28,15 @@
     <li>暂无申请记录</li>
   {% endfor %}
 </ul>
+{% endif %}
 
+{% if is_staff %}
+<h3>审核入口</h3>
+<ul>
+  <li><a href="{% url 'accounts:review_list' %}">身份审核（待审核申请）</a></li>
+  <li><a href="{% url 'items:review_list' %}">物品审核（待审核物品）</a></li>
+</ul>
+{% else %}
 <h3>我发布的物品</h3>
 <ul>
   {% for item in items %}
@@ -35,4 +48,5 @@
     <li><a href="{% url 'items:create' %}">发布第一件物品</a></li>
   {% endfor %}
 </ul>
+{% endif %}
 {% endblock %}
