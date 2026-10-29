@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="500" viewBox="0 0 1100 500">
+<rect width="100%" height="100%" fill="white"/>
+<g font-family="Microsoft YaHei, sans-serif" fill="#253b50">
+<text x="550.0" y="30.0" text-anchor="middle" dominant-baseline="middle" font-size="22">CP-M-05  校园平台：新增借用资格状态图</text>
+<path d="M 355.0 220 L 725.0 220" fill="none" stroke="#72879a" stroke-width="1.8"/>
+<polygon points="725.0,220 714.0429327162523,224.89312543671485 714.0429327162523,215.10687456328515" fill="#72879a"/>
+<rect x="476.5" y="133.0" width="127" height="57" fill="white" opacity="0.94"/>
+<text x="540" y="146.0" text-anchor="middle" dominant-baseline="middle" font-size="13">CP-ST-31</text>
+<text x="540" y="165.0" text-anchor="middle" dominant-baseline="middle" font-size="13">逾期未有效结束</text>
+<text x="540" y="184.0" text-anchor="middle" dominant-baseline="middle" font-size="13">关闭未选定借用申请</text>
+<path d="M 725.0 260 L 355.0 260" fill="none" stroke="#72879a" stroke-width="1.8"/>
+<polygon points="355.0,260 365.9570672837477,255.10687456328515 365.9570672837477,264.89312543671485" fill="#72879a"/>
+<rect x="450.5" y="298.0" width="179" height="57" fill="white" opacity="0.94"/>
+<text x="540" y="311.0" text-anchor="middle" dominant-baseline="middle" font-size="13">CP-ST-25</text>
+<text x="540" y="330.0" text-anchor="middle" dominant-baseline="middle" font-size="13">全部逾期逐笔归还或赔偿结清</text>
+<text x="540" y="349.0" text-anchor="middle" dominant-baseline="middle" font-size="13">且相关争议均关闭</text>
+<rect x="135.0" y="200.0" width="220" height="80" rx="17" fill="#edf4fb" stroke="#356d96" stroke-width="2"/>
+<text x="245" y="240.0" text-anchor="middle" dominant-baseline="middle" font-size="15">无本项限制</text>
+<rect x="725.0" y="200.0" width="220" height="80" rx="17" fill="#edf4fb" stroke="#356d96" stroke-width="2"/>
+<text x="835" y="240.0" text-anchor="middle" dominant-baseline="middle" font-size="15">新增借用受限</text>
+<text x="550.0" y="438.0" text-anchor="middle" dominant-baseline="middle" font-size="13">CP-UC-06；对象为用户的逾期新增借用限制。其他限制与身份审核不随之解除；未选定借用申请关闭，已预留／借出继续履约，归还仍可处理。</text>
+<text x="550.0" y="480.0" text-anchor="middle" dominant-baseline="middle" font-size="13">v0.2 · 2026-10-29细则补充 · 新分支未人工验证</text>
+</g>
+</svg>

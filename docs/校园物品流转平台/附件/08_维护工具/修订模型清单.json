@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-29",
+  "basis": [
+    "CP-D-07",
+    "CP-D-08",
+    "CP-D-09",
+    "CP-D-10",
+    "CP-D-11",
+    "CP-D-13",
+    "CP-D-14",
+    "CP-D-15",
+    "CP-D-16",
+    "CP-D-17",
+    "CP-D-18",
+    "CP-D-19",
+    "CP-D-21"
+  ],
+  "sha256": {
+    "CP-M-03.drawio": "c74c590fb8402416463b1e579e26c65ae391b300703ff17f221dc6e33aa43d8a",
+    "CP-M-03.png": "2232aaa1d1036ab7e34d71f994da05541c1bc33e0a6e33dac34b29513f74bf84",
+    "CP-M-03.svg": "b1c1460bf0973cfa3eb6cde6c5ee301c1b6b6778901a904ca75e6a0ed3b643bf",
+    "CP-M-04.drawio": "4f00d7b839638492ac7e5b730b704482362cbe64b56a48171b3aa61deddb3fb6",
+    "CP-M-04.png": "5868ca1c4e1a25058391c9e457bc9631aa709f4b2c0bd9da001b543fd998170d",
+    "CP-M-04.svg": "dddf575d5d47835a924fb09bb08af58a17eea7bc2283c450eb5484c4e14063b1",
+    "CP-M-05.drawio": "2f31fc75e4d489ae7d1d02dd0ac2c35ca11de798c72c2811271341c4fb2aa7a8",
+    "CP-M-05.png": "02b551c0101c12da6269489019fceba44d99a62baf74503e6d7cae2f7f0078dd",
+    "CP-M-05.svg": "2583c48f8c468d4b0d81f1db202efd8d6214d9f8dbf02b1e59b147fbc2ddf50b",
+    "CP-M-06.drawio": "2f0e26580e91754d2b61a7a2c1ac85114a8658c79918a50ca8bca626803d0dd5",
+    "CP-M-06.png": "3b862fa02dabd8129de851e6d5a0a013b157513beb4b3a03eed6b8a61b7869e3",
+    "CP-M-06.svg": "26d34c8fb730173eae3defe996f96023c48064e7dae4f5e788e22358065cb367",
+    "CP-M-07.drawio": "b2dc60e44faec8f696ea743759ddf1a0c87323541de92200b338a03d60b26631",
+    "CP-M-07.png": "4b7d0a81f3894fb6f668a3610332c6ec4bdb635888b7dc3013e9625a87ab8576",
+    "CP-M-07.svg": "118e6b86616e3879a4a4797b6201125a0b96dbd8d9a0d3a2e3b412acbe8f9ae6",
+    "CP-M-08.drawio": "7f91ee0898a116615befd8edb9444aa3dd78452a9fa44d691d01bb4edda1ab2b",
+    "CP-M-08.png": "9702f44bc7302b186fdd88c92655df4a6294ab3a57cfa8736aef9fcac9f0a83a",
+    "CP-M-08.svg": "e51a6ef70ea1dd1fe85c2bb703ec795d6e7f7b35792db1534761db4f9ecdd1d8"
+  }
+}
