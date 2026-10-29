@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>申请列表：{{ item.name }}</h1>
+<ul>
+  {% for a in applications %}
+  <li>
+    {{ a.applicant.username }} — {{ a.get_kind_display }}
+    {% if a.status == "pending" %}
+      <form method="post" action="{% url 'transfers:reserve' a.id %}" style="display:inline">
+        {% csrf_token %}
+        <button type="submit">选择该申请人</button>
+      </form>
+    {% else %}
+      （{{ a.get_status_display }}）
+    {% endif %}
+  </li>
+  {% empty %}
+  <li>暂无待处理申请</li>
+  {% endfor %}
+</ul>
+{% endblock %}

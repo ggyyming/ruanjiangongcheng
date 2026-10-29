@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>流转详情 #{{ transfer.id }}</h1>
+<p>物品：{{ transfer.item.name }}</p>
+<p>类型：{{ transfer.get_kind_display }}</p>
+<p>状态：{{ transfer.get_status_display }}</p>
+{% if transfer.amount is not None %}<p>金额：{{ transfer.amount }}</p>{% endif %}
+<p>物主：{{ transfer.owner.username }}　获选方：{{ transfer.recipient.username }}</p>
+<p>
+  物主确认：{% if transfer.owner_confirmed_at %}{{ transfer.owner_confirmed_at }}{% else %}未确认{% endif %}
+  　获选方确认：{% if transfer.recipient_confirmed_at %}{{ transfer.recipient_confirmed_at }}{% else %}未确认{% endif %}
+</p>
+
+{% if transfer.revoke_status == "negotiating" and revocation %}
+  <h2>撤销协商中</h2>
+  <p>发起方：{{ revocation.get_initiator_display }}　原因：{{ revocation.reason }}</p>
+  <p>
+    物主声明：{% if revocation.owner_direction %}{{ revocation.get_owner_direction_display }}{% else %}未声明{% endif %}
+    　获选方声明：{% if revocation.recipient_direction %}{{ revocation.get_recipient_direction_display }}{% else %}未声明{% endif %}
+  </p>
+  {% if revocation.owner_direction and revocation.recipient_direction and revocation.owner_direction != revocation.recipient_direction %}
+    <p class="warning">双方对物品去向声明不一致，需管理员介入（CP-BR-10）。</p>
+  {% endif %}
+{% endif %}
+
+{% if transfer.status == "reserved" %}
+  {% if not transfer.owner_confirmed_at or not transfer.recipient_confirmed_at %}
+    <h2>交付确认</h2>
+    <form method="post" action="{% url 'transfers:confirm_delivery' transfer.id %}">
+      {% csrf_token %}
+      <button type="submit">确认交付</button>
+    </form>
+  {% endif %}
+
+  {% if transfer.revoke_status == "none" %}
+    {% if not transfer.owner_confirmed_at and not transfer.recipient_confirmed_at %}
+      <h2>取消流转</h2>
+      <form method="post" action="{% url 'transfers:cancel' transfer.id %}">
+        {% csrf_token %}
+        {{ reason_form.as_p }}
+        <button type="submit">取消</button>
+      </form>
+    {% else %}
+      <h2>协商撤销</h2>
+      <form method="post" action="{% url 'transfers:start_revoke' transfer.id %}">
+        {% csrf_token %}
+        {{ reason_form.as_p }}
+        <button type="submit">发起撤销协商</button>
+      </form>
+    {% endif %}
+  {% elif transfer.revoke_status == "negotiating" %}
+    <h2>撤销协商操作</h2>
+    <form method="post" action="{% url 'transfers:declare_direction' transfer.id %}">
+      {% csrf_token %}
+      {{ direction_form.as_p }}
+      <button type="submit">声明物品去向</button>
+    </form>
+    <form method="post" action="{% url 'transfers:agree_revoke' transfer.id %}">
+      {% csrf_token %}
+      <button type="submit">同意撤销</button>
+    </form>
+    <form method="post" action="{% url 'transfers:withdraw_revoke' transfer.id %}">
+      {% csrf_token %}
+      <button type="submit">撤回撤销申请</button>
+    </form>
+  {% endif %}
+{% endif %}
+
+<p><a href="{% url 'payments:payments_for_transfer' transfer.id %}">查看资金明细（模拟）</a></p>
+{% endblock %}

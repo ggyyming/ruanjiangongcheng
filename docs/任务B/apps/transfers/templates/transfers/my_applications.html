@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>我的申请</h1>
+<ul>
+  {% for a in applications %}
+  <li>
+    {{ a.item.name }} — {{ a.get_kind_display }} — {{ a.get_status_display }}
+    {% if a.status == "closed" and a.close_reason %}（{{ a.close_reason }}）{% endif %}
+  </li>
+  {% empty %}
+  <li>暂无申请</li>
+  {% endfor %}
+</ul>
+{% endblock %}
