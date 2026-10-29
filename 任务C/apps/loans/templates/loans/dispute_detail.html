@@ -1,0 +1,92 @@
+{% extends "loans/base.html" %}
+{% block title %}借出争议{% endblock %}
+{% block content %}
+<p><a href="{% url 'loans:detail' dispute.agreement.pk %}">← 返回借用记录</a></p>
+<h1>{{ dispute.get_kind_display }}争议</h1>
+
+<dl class="facts">
+  <dt>物品</dt><dd>{{ dispute.agreement.item_title }}</dd>
+  <dt>物主</dt><dd>{{ dispute.agreement.owner }}</dd>
+  <dt>借用者</dt><dd>{{ dispute.agreement.borrower }}</dd>
+  <dt>状态</dt><dd>{{ dispute.get_status_display }}</dd>
+  <dt>提交人</dt><dd>{{ dispute.opened_by }}</dd>
+  <dt>提交时间</dt><dd>{{ dispute.created_at|date:"Y-m-d H:i" }}</dd>
+  <dt>负责管理员</dt><dd>{{ dispute.assigned_admin|default:"尚未认领" }}</dd>
+</dl>
+
+<section class="card">
+  <h2>情况与材料</h2>
+  <p class="pre">{{ dispute.description }}</p>
+  {% if dispute.materials %}<p class="pre">{{ dispute.materials }}</p>{% endif %}
+  <p class="hint">争议材料仅当事双方及负责处理的管理员可见。</p>
+</section>
+
+<section class="card">
+  <h2>赔偿或退款方案</h2>
+  {% if dispute.plan %}
+    <p class="pre">{{ dispute.plan }}</p>
+    <p class="hint">记录人：{{ dispute.plan_recorded_by }}，{{ dispute.plan_recorded_at|date:"Y-m-d H:i" }}</p>
+  {% else %}
+    <p class="hint">尚未记录方案。记录方案不等于已履行，也不等于争议已关闭。</p>
+  {% endif %}
+
+  {% if dispute.status == "open" and is_party %}
+    <form method="post" action="{% url 'loans:record_plan' dispute.pk %}">
+      {% csrf_token %}
+      {{ plan_form.as_p }}
+      <button type="submit">记录方案</button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>履行与结束</h2>
+  <p>
+    物主确认已履行：
+    {% if dispute.owner_performed_at %}{{ dispute.owner_performed_at|date:"Y-m-d H:i" }}{% else %}未确认{% endif %}
+    ｜ 借用者确认已履行：
+    {% if dispute.borrower_performed_at %}{{ dispute.borrower_performed_at|date:"Y-m-d H:i" }}{% else %}未确认{% endif %}
+  </p>
+  <p>
+    物主同意结束：
+    {% if dispute.owner_end_agreed_at %}{{ dispute.owner_end_agreed_at|date:"Y-m-d H:i" }}{% else %}未表达{% endif %}
+    ｜ 借用者同意结束：
+    {% if dispute.borrower_end_agreed_at %}{{ dispute.borrower_end_agreed_at|date:"Y-m-d H:i" }}{% else %}未表达{% endif %}
+  </p>
+  <p class="hint">双方分别确认履行且都同意结束后，由系统关闭争议；意见不一致转管理员处理。</p>
+
+  {% if dispute.status == "open" and is_party %}
+    <div class="actions">
+      <form method="post" action="{% url 'loans:confirm_performed' dispute.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="secondary">确认我方已履行方案</button>
+      </form>
+      <form method="post" action="{% url 'loans:agree_end' dispute.pk %}">
+        {% csrf_token %}
+        <button type="submit">同意结束争议</button>
+      </form>
+    </div>
+  {% endif %}
+</section>
+
+{% if dispute.status == "closed" %}
+<section class="card">
+  <h2>关闭结果</h2>
+  <p>关闭时间：{{ dispute.closed_at|date:"Y-m-d H:i" }}</p>
+  <p>关闭人：{{ dispute.closed_by|default:"系统（双方履行并同意结束）" }}</p>
+  {% if dispute.resolution %}<p class="pre">{{ dispute.resolution }}</p>{% endif %}
+  <p class="hint">争议关闭不等同于资金已到账；押金退款以资金记录为准。</p>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>处理记录</h2>
+  <ul class="plain">
+    {% for event in events %}
+      <li>{{ event.created_at|date:"Y-m-d H:i" }} · {{ event.action }}{% if event.actor %} · {{ event.actor }}{% endif %}{% if event.note %} · {{ event.note }}{% endif %}</li>
+    {% empty %}
+      <li class="hint">暂无记录。</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

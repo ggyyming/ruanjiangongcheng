@@ -1,0 +1,40 @@
+diff --git a/config/settings.py b/config/settings.py
+index eb74aa1..e41759a 100644
+--- a/config/settings.py
++++ b/config/settings.py
+@@ -38,6 +38,7 @@ INSTALLED_APPS = [
+     "django.contrib.sessions",
+     "django.contrib.messages",
+     "django.contrib.staticfiles",
++    "apps.loans",
+ ]
+ 
+ MIDDLEWARE = [
+@@ -111,6 +112,9 @@ USE_I18N = True
+ 
+ USE_TZ = True
+ 
++# 借用页面的登录跳转；A 包接入自有认证后替换为对应登录页。
++LOGIN_URL = "admin:login"
++
+ 
+ # Static files (CSS, JavaScript, Images)
+ # https://docs.djangoproject.com/en/5.2/howto/static-files/
+diff --git a/config/urls.py b/config/urls.py
+index 1c7808e..ac10fc3 100644
+--- a/config/urls.py
++++ b/config/urls.py
+@@ -16,11 +16,12 @@ Including another URLconf
+ """
+ 
+ from django.contrib import admin
+-from django.urls import path
++from django.urls import include, path
+ 
+ from config.views import health
+ 
+ urlpatterns = [
+     path("health/", health, name="health"),
+     path("admin/", admin.site.urls),
++    path("loans/", include("apps.loans.urls")),
+ ]

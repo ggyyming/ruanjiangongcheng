@@ -1,0 +1,69 @@
+{% extends "loans/base.html" %}
+{% block title %}管理员处理争议{% endblock %}
+{% block content %}
+<p><a href="{% url 'loans:admin_dispute_list' %}">← 返回争议列表</a></p>
+<h1>{{ dispute.get_kind_display }}争议 · {{ dispute.agreement.item_title }}</h1>
+
+<dl class="facts">
+  <dt>状态</dt><dd>{{ dispute.get_status_display }}</dd>
+  <dt>物主</dt><dd>{{ dispute.agreement.owner }}</dd>
+  <dt>借用者</dt><dd>{{ dispute.agreement.borrower }}</dd>
+  <dt>提交人</dt><dd>{{ dispute.opened_by }}</dd>
+  <dt>负责管理员</dt><dd>{{ dispute.assigned_admin|default:"未认领" }}</dd>
+  <dt>方案</dt><dd class="pre">{{ dispute.plan|default:"尚未记录" }}</dd>
+</dl>
+
+<section class="card">
+  <h2>情况与材料</h2>
+  <p class="pre">{{ dispute.description }}</p>
+  {% if dispute.materials %}<p class="pre">{{ dispute.materials }}</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>履行与结束意见</h2>
+  <p>
+    物主已履行：{% if dispute.owner_performed_at %}{{ dispute.owner_performed_at|date:"Y-m-d H:i" }}{% else %}未确认{% endif %}
+    ｜ 借用者已履行：{% if dispute.borrower_performed_at %}{{ dispute.borrower_performed_at|date:"Y-m-d H:i" }}{% else %}未确认{% endif %}
+  </p>
+  <p>
+    物主同意结束：{% if dispute.owner_end_agreed_at %}{{ dispute.owner_end_agreed_at|date:"Y-m-d H:i" }}{% else %}未表达{% endif %}
+    ｜ 借用者同意结束：{% if dispute.borrower_end_agreed_at %}{{ dispute.borrower_end_agreed_at|date:"Y-m-d H:i" }}{% else %}未表达{% endif %}
+  </p>
+</section>
+
+{% if dispute.status == "open" %}
+<section class="card">
+  <h2>管理员处理</h2>
+  {% if not dispute.assigned_admin %}
+    <form method="post" action="{% url 'loans:claim_dispute' dispute.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="secondary">认领此争议</button>
+    </form>
+  {% endif %}
+  <p class="hint">双方分别确认方案已履行后，管理员可在意见不一致时关闭争议；不能代为确认履行。</p>
+  <form method="post" action="{% url 'loans:admin_close_dispute' dispute.pk %}">
+    {% csrf_token %}
+    {{ close_form.as_p }}
+    <button type="submit" class="danger">关闭争议</button>
+  </form>
+</section>
+{% else %}
+<section class="card">
+  <h2>关闭结果</h2>
+  <p>关闭时间：{{ dispute.closed_at|date:"Y-m-d H:i" }}</p>
+  <p>关闭人：{{ dispute.closed_by|default:"系统（双方履行并同意结束）" }}</p>
+  {% if dispute.resolution %}<p class="pre">{{ dispute.resolution }}</p>{% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>处理记录</h2>
+  <ul class="plain">
+    {% for event in events %}
+      <li>{{ event.created_at|date:"Y-m-d H:i" }} · {{ event.action }}{% if event.actor %} · {{ event.actor }}{% endif %}{% if event.note %} · {{ event.note }}{% endif %}</li>
+    {% empty %}
+      <li class="hint">暂无记录。</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

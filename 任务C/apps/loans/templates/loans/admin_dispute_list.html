@@ -1,0 +1,36 @@
+{% extends "loans/base.html" %}
+{% block title %}争议处理{% endblock %}
+{% block content %}
+<h1>争议处理</h1>
+<p class="hint">仅显示尚未认领的争议和由你负责的争议；认领后其他管理员不得查看材料。</p>
+{% if disputes %}
+<table class="table">
+  <thead>
+    <tr><th>物品</th><th>类型</th><th>状态</th><th>提交时间</th><th>负责管理员</th><th>操作</th></tr>
+  </thead>
+  <tbody>
+    {% for dispute in disputes %}
+    <tr>
+      <td><a href="{% url 'loans:admin_dispute_detail' dispute.pk %}">{{ dispute.agreement.item_title }}</a></td>
+      <td>{{ dispute.get_kind_display }}</td>
+      <td>{{ dispute.get_status_display }}</td>
+      <td>{{ dispute.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ dispute.assigned_admin|default:"未认领" }}</td>
+      <td>
+        {% if not dispute.assigned_admin %}
+          <form method="post" action="{% url 'loans:claim_dispute' dispute.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="secondary">认领</button>
+          </form>
+        {% else %}
+          <span class="hint">由你负责</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">暂无待处理争议。</p>
+{% endif %}
+{% endblock %}

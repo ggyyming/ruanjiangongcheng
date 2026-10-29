@@ -1,0 +1,32 @@
+{% extends "loans/base.html" %}
+{% block title %}站内通知{% endblock %}
+{% block content %}
+<h1>站内通知</h1>
+{% if notifications %}
+<ul class="notices">
+  {% for notification in notifications %}
+  <li class="{% if not notification.read_at %}unread{% endif %}">
+    <div class="notice-head">
+      <strong>{{ notification.title }}</strong>
+      <span class="hint">{{ notification.created_at|date:"Y-m-d H:i" }}</span>
+    </div>
+    {% if notification.body %}<p>{{ notification.body }}</p>{% endif %}
+    <div class="notice-foot">
+      <span class="hint">{{ notification.get_business_kind_display }}</span>
+      {% if notification.read_at %}
+        <span class="hint">已读 {{ notification.read_at|date:"Y-m-d H:i" }}</span>
+      {% else %}
+        <form method="post" action="{% url 'loans:mark_notification_read' notification.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="link">标记已读</button>
+        </form>
+      {% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+<p class="hint">通知送达或已读不替代交付、归还或资金结果确认。</p>
+{% else %}
+<p class="empty">暂无通知。</p>
+{% endif %}
+{% endblock %}

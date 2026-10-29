@@ -1,0 +1,35 @@
+{% extends "loans/base.html" %}
+{% block title %}我的借用{% endblock %}
+{% block content %}
+<h1>我的借用</h1>
+{% if agreements %}
+<table class="table">
+  <thead>
+    <tr>
+      <th>物品</th>
+      <th>状态</th>
+      <th>约定归还时间</th>
+      <th>物主 / 借用者</th>
+      <th>押金</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for agreement in agreements %}
+    <tr>
+      <td><a href="{% url 'loans:detail' agreement.pk %}">{{ agreement.item_title }}</a></td>
+      <td>
+        {{ agreement.get_status_display }}
+        {% if agreement.overdue_marked_at %}<span class="badge warn">逾期</span>{% endif %}
+        {% if agreement.has_open_dispute %}<span class="badge">争议中</span>{% endif %}
+      </td>
+      <td>{{ agreement.due_at|date:"Y-m-d H:i"|default:"尚未约定" }}</td>
+      <td>{{ agreement.owner }} / {{ agreement.borrower }}</td>
+      <td>{{ agreement.deposit_amount }} 元</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">暂无借用记录。借用记录由流转包在物主选定申请人后创建。</p>
+{% endif %}
+{% endblock %}

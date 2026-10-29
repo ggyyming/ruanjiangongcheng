@@ -1,0 +1,195 @@
+{% extends "loans/base.html" %}
+{% block title %}{{ agreement.item_title }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'loans:list' %}">← 返回我的借用</a></p>
+<h1>{{ agreement.item_title }}</h1>
+
+<dl class="facts">
+  <dt>状态</dt>
+  <dd>
+    {{ agreement.get_status_display }}
+    {% if agreement.overdue_marked_at %}<span class="badge warn">逾期</span>{% endif %}
+    {% if agreement.has_open_dispute %}<span class="badge">争议中</span>{% endif %}
+  </dd>
+  <dt>物主</dt><dd>{{ agreement.owner }}</dd>
+  <dt>借用者</dt><dd>{{ agreement.borrower }}</dd>
+  <dt>约定押金</dt><dd>{{ agreement.deposit_amount }} 元</dd>
+  <dt>约定归还时间</dt>
+  <dd>{{ agreement.due_at|date:"Y-m-d H:i"|default:"尚未约定" }}</dd>
+  {% if agreement.deposit_refund_requested_at %}
+    <dt>押金退款</dt>
+    <dd>
+      已提交退款申请（{{ agreement.deposit_refund_reason }}），到账以资金记录为准。
+    </dd>
+  {% endif %}
+</dl>
+
+{% if agreement.status == "pending_delivery" %}
+<section class="card">
+  <h2>约定归还时间</h2>
+  {% if agreement.due_at %}
+    <p>
+      当前约定：<strong>{{ agreement.due_at|date:"Y-m-d H:i" }}</strong>（北京时间）
+    </p>
+    <p class="hint">
+      物主确认：
+      {% if agreement.due_owner_confirmed_at %}{{ agreement.due_owner_confirmed_at|date:"Y-m-d H:i" }}{% else %}未确认{% endif %}；
+      借用者确认：
+      {% if agreement.due_borrower_confirmed_at %}{{ agreement.due_borrower_confirmed_at|date:"Y-m-d H:i" }}{% else %}未确认{% endif %}
+    </p>
+    {% if not my_due_confirmed %}
+      <form method="post" action="{% url 'loans:confirm_due_date' agreement.pk %}">
+        {% csrf_token %}
+        <button type="submit">确认当前归还时间</button>
+      </form>
+    {% endif %}
+  {% endif %}
+  <form method="post" action="{% url 'loans:set_due_date' agreement.pk %}">
+    {% csrf_token %}
+    {{ due_form.as_p }}
+    <button type="submit">提出并确认此时间</button>
+  </form>
+  <p class="hint">提出新的时间会清除双方原确认；双方分别确认后才满足交付前提。</p>
+</section>
+
+{% elif agreement.status == "active" or agreement.status == "awaiting_return" %}
+<section class="card">
+  <h2>归还</h2>
+  {% if agreement.status == "active" %}
+    {% if is_borrower %}
+      <form method="post" action="{% url 'loans:confirm_return' agreement.pk %}">
+        {% csrf_token %}
+        <button type="submit">我已交还物品</button>
+      </form>
+      <p class="hint">单方确认不会结束借用，仍需物主确认收回。</p>
+    {% else %}
+      <p class="hint">等待借用者确认交还。</p>
+    {% endif %}
+  {% else %}
+    <p>借用者已于 {{ agreement.handed_back_at|date:"Y-m-d H:i" }} 确认交还。</p>
+    {% if is_owner %}
+      <form method="post" action="{% url 'loans:confirm_return' agreement.pk %}">
+        {% csrf_token %}
+        <button type="submit">我确认已收回</button>
+      </form>
+      <p class="hint">双方确认后记为已归还；押金退款由资金模块处理，发起不等于到账。</p>
+    {% else %}
+      <p class="hint">等待物主确认收回。</p>
+    {% endif %}
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>延期</h2>
+  {% if is_borrower and agreement.status == "active" %}
+    {% if pending_extension %}
+      <p>延期申请处理中：{{ pending_extension.proposed_due_at|date:"Y-m-d H:i" }}，待物主同意。</p>
+    {% else %}
+      <form method="post" action="{% url 'loans:request_extension' agreement.pk %}">
+        {% csrf_token %}
+        {{ extension_form.as_p }}
+        <button type="submit">申请延期</button>
+      </form>
+      <p class="hint">须在当前有效到期时刻前提交；申请待批不改变原期限。</p>
+    {% endif %}
+  {% endif %}
+  {% if is_owner and pending_extension %}
+    <p>借用者申请延长至 {{ pending_extension.proposed_due_at|date:"Y-m-d H:i" }}。</p>
+    <form method="post" action="{% url 'loans:decide_extension' agreement.pk pending_extension.pk %}">
+      {% csrf_token %}
+      <button type="submit" name="decision" value="approve">同意延期</button>
+      <button type="submit" name="decision" value="reject" class="secondary">拒绝</button>
+    </form>
+    <p class="hint">允许到期后批准；新期限从批准时生效，已有逾期记录和限制不自动撤销。</p>
+  {% endif %}
+  {% if not is_borrower and not pending_extension and agreement.status == "active" %}
+    <p class="hint">暂无待审批的延期申请。</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>损坏或丢失争议</h2>
+  {% if open_dispute %}
+    <p><a href="{% url 'loans:dispute_detail' open_dispute.pk %}">查看正在处理的争议</a></p>
+    <p class="hint">争议处理中暂缓归还确认和自动退款。</p>
+  {% else %}
+    <form method="post" action="{% url 'loans:open_dispute' agreement.pk %}">
+      {% csrf_token %}
+      {{ dispute_form.as_p }}
+      <button type="submit" class="danger">提交争议</button>
+    </form>
+    <p class="hint">系统不自动判责或扣押金；双方先协商，协商不成转管理员。</p>
+  {% endif %}
+</section>
+
+{% elif agreement.status == "disputed" %}
+<section class="card">
+  <h2>争议处理中</h2>
+  {% if open_dispute %}
+    <p><a href="{% url 'loans:dispute_detail' open_dispute.pk %}">进入争议页面</a></p>
+  {% endif %}
+  <p class="hint">争议关闭后，按原状态继续归还确认或赔偿结清流程。</p>
+</section>
+
+{% elif agreement.status == "returned" %}
+<section class="card">
+  <h2>已归还</h2>
+  <p>归还完成时间：{{ agreement.completed_at|date:"Y-m-d H:i" }}</p>
+  <p class="hint">物品不自动重新开放；由物主按物品包规则手动申请重新上架。</p>
+</section>
+
+{% elif agreement.status == "compensated" %}
+<section class="card">
+  <h2>赔偿结清</h2>
+  <p>结清时间：{{ agreement.compensated_at|date:"Y-m-d H:i" }}</p>
+  <p class="hint">赔偿结清与已归还是不同结果；丢失物品不重新开放。</p>
+</section>
+
+{% elif agreement.status == "cancelled" %}
+<section class="card">
+  <h2>已取消</h2>
+  <p>取消原因：{{ agreement.cancel_reason|default:"未记录" }}</p>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>延期记录</h2>
+  {% if extensions %}
+  <table class="table">
+    <thead>
+      <tr><th>原期限</th><th>申请期限</th><th>申请时间</th><th>状态</th><th>决定时间</th></tr>
+    </thead>
+    <tbody>
+      {% for extension in extensions %}
+      <tr>
+        <td>{{ extension.previous_due_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ extension.proposed_due_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ extension.requested_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ extension.get_status_display }}</td>
+        <td>{{ extension.decided_at|date:"Y-m-d H:i"|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="hint">暂无延期记录。</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>争议记录</h2>
+  {% if agreement.disputes.all %}
+  <ul class="plain">
+    {% for dispute in agreement.disputes.all %}
+      <li>
+        <a href="{% url 'loans:dispute_detail' dispute.pk %}">{{ dispute.get_kind_display }}争议</a>
+        · {{ dispute.get_status_display }}
+        · {{ dispute.created_at|date:"Y-m-d H:i" }}
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="hint">暂无争议记录。</p>
+  {% endif %}
+</section>
+{% endblock %}

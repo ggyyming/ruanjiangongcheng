@@ -1,0 +1,27 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}借用与争议{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'loans/styles.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <strong>校园物品流转 · 借用</strong>
+    <nav>
+      <a href="{% url 'loans:list' %}">我的借用</a>
+      <a href="{% url 'loans:notifications' %}">站内通知</a>
+      {% if user.is_staff %}<a href="{% url 'loans:admin_dispute_list' %}">争议处理</a>{% endif %}
+    </nav>
+    <span class="who">{{ user }}</span>
+  </header>
+  <main>
+    {% for message in messages %}
+      <div class="message {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
