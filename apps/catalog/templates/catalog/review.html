@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}审核物品{% endblock %}
+{% block content %}
+<h2>审核物品（CP-D-05：信息须真实准确，不通过须记录原因）</h2>
+<dl>
+  <dt>名称</dt><dd>{{ item.name }}</dd>
+  <dt>类别</dt><dd>{{ item.category }}</dd>
+  <dt>描述</dt><dd>{{ item.description }}</dd>
+  {% if item.flaws %}<dt>瑕疵</dt><dd>{{ item.flaws }}</dd>{% endif %}
+  <dt>流转类型</dt><dd>{{ item.get_flow_type_display }}</dd>
+  {% if item.price %}<dt>价格</dt><dd>¥{{ item.price }}</dd>{% endif %}
+  {% if item.deposit_display %}<dt>押金展示</dt><dd>¥{{ item.deposit_display }}</dd>{% endif %}
+  <dt>物主昵称</dt><dd>{{ item.owner_nickname }}</dd>
+  <dt>校内区域</dt><dd>{{ item.campus_area }}</dd>
+</dl>
+<form method="post">
+  {% csrf_token %}
+  <p><label><input type="checkbox" name="approve"> 审核通过</label></p>
+  <p><label>结论/驳回原因：<textarea name="reason" rows="3"></textarea></label></p>
+  <button type="submit">提交审核</button>
+</form>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+<h2>{{ item.name }}</h2>
+<p>状态：{{ item.get_display_status_display }}{% if item.review_reason %}（{{ item.review_reason }}）{% endif %}</p>
+<dl>
+  <dt>类别</dt><dd>{{ item.category }}</dd>
+  <dt>描述</dt><dd>{{ item.description }}</dd>
+  {% if item.flaws %}<dt>瑕疵</dt><dd>{{ item.flaws }}</dd>{% endif %}
+  <dt>流转类型</dt><dd>{{ item.get_flow_type_display }}</dd>
+  {% if item.price %}<dt>价格</dt><dd>¥{{ item.price }}</dd>{% endif %}
+  {% if item.deposit_display %}<dt>押金展示</dt><dd>¥{{ item.deposit_display }}</dd>{% endif %}
+  <dt>物主昵称</dt><dd>{{ item.owner_nickname }}</dd>
+  <dt>校内区域</dt><dd>{{ item.campus_area }}</dd>
+  {% if show_private %}
+    <dt>联系方式（私密，仅预留后双方可见）</dt><dd>{{ item.contact }}</dd>
+    <dt>具体地点（私密）</dt><dd>{{ item.location }}</dd>
+  {% endif %}
+</dl>
+{% if is_owner %}
+  {% if item.display_status == "可申请" %}
+    <form method="post" action="{% url 'items:offline' item.id %}" style="display:inline">
+      {% csrf_token %}<button type="submit">下架</button>
+    </form>
+  {% endif %}
+  {% if item.display_status == "已下架" %}
+    <form method="post" action="{% url 'items:relist' item.id %}" style="display:inline">
+      {% csrf_token %}<button type="submit">申请重新上架</button>
+    </form>
+  {% endif %}
+  {% if item.display_status != "已下架" %}
+    <a href="{% url 'items:edit' item.id %}">修改</a>
+  {% endif %}
+{% endif %}
+{% if is_staff and item.display_status == "待审核" %}
+  <a href="{% url 'items:review' item.id %}">去审核</a>
+{% endif %}
+{% endblock %}

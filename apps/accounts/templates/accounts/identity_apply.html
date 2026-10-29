@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}校内身份申请{% endblock %}
+{% block content %}
+<h2>校内身份申请（CP-D-01）</h2>
+<p>请填写姓名、学号或工号、院系或部门。管理员将线下核验后审核，无需上传证件图片。</p>
+<form method="post">
+  {% csrf_token %}
+  <p><label>姓名：<input name="name" required></label></p>
+  <p><label>学号或工号：<input name="staff_no" required></label></p>
+  <p><label>院系或部门：<input name="department" required></label></p>
+  <button type="submit">提交申请</button>
+</form>
+{% endblock %}
