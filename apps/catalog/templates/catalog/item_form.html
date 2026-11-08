@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}修改物品{% else %}发布物品{% endif %}{% endblock %}
+{% block content %}
+<h2>{% if editing %}修改物品（保存后重新进入待审核）{% else %}发布物品{% endif %}</h2>
+<p>规则：出售须填价格；出借须填押金展示；赠送不填价格与押金。联系方式与具体地点仅预留后对交易双方可见。</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">提交</button>
+</form>
+{% endblock %}

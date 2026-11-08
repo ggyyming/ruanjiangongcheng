@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}审核身份申请{% endblock %}
+{% block content %}
+<h2>审核身份申请</h2>
+<dl>
+  <dt>申请人账号</dt><dd>{{ application.user.username }}</dd>
+  <dt>姓名</dt><dd>{{ application.name }}</dd>
+  <dt>学号或工号</dt><dd>{{ application.staff_no }}</dd>
+  <dt>院系或部门</dt><dd>{{ application.department }}</dd>
+  <dt>提交时间</dt><dd>{{ application.created_at|date:"Y-m-d H:i" }}</dd>
+</dl>
+<form method="post">
+  {% csrf_token %}
+  <p><label><input type="checkbox" name="approve"> 审核通过</label></p>
+  <p><label>结论/驳回原因：<textarea name="reason" rows="3"></textarea></label></p>
+  <button type="submit">提交审核</button>
+</form>
+{% endblock %}

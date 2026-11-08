@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}物品审核{% endblock %}
+{% block content %}
+<h2>待审核物品</h2>
+<ul>
+  {% for item in items %}
+    <li>
+      <a href="{% url 'items:review' item.id %}">{{ item.name }}</a>
+      —— {{ item.get_flow_type_display }}，物主 {{ item.owner_nickname }}
+    </li>
+  {% empty %}
+    <li>暂无待审核物品</li>
+  {% endfor %}
+</ul>
+{% endblock %}

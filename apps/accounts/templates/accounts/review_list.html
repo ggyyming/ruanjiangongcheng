@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}身份审核{% endblock %}
+{% block content %}
+<h2>待审核身份申请</h2>
+<ul>
+  {% for app in applications %}
+    <li>
+      <a href="{% url 'accounts:review' app.id %}">{{ app.name }}（{{ app.staff_no }}，{{ app.department }}）</a>
+      提交于 {{ app.created_at|date:"Y-m-d H:i" }}
+    </li>
+  {% empty %}
+    <li>暂无待审核申请</li>
+  {% endfor %}
+</ul>
+{% endblock %}

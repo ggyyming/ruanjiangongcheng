@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}物品市场{% endblock %}
+{% block content %}
+<h2>物品市场</h2>
+{% if user.is_authenticated %}
+  <p><a href="{% url 'items:create' %}">发布物品</a></p>
+{% endif %}
+<ul>
+  {% for item in items %}
+    <li>
+      <a href="{% url 'items:detail' item.id %}">{{ item.name }}</a>
+      —— {{ item.get_flow_type_display }}{% if item.price %}，¥{{ item.price }}{% endif %}
+      {% if item.deposit_display %}，押金 ¥{{ item.deposit_display }}{% endif %}
+      （{{ item.owner_nickname }}，{{ item.campus_area }}）
+    </li>
+  {% empty %}
+    <li>暂无在售物品</li>
+  {% endfor %}
+</ul>
+{% endblock %}
