@@ -13,6 +13,7 @@
     <button class="secondary" type="submit">搜索</button>
   </form>
 </header>
+<p class="actions"><a class="button secondary" href="{% url 'transfers:admin_revocation_conflicts' %}">撤销去向分歧处理</a></p>
 {% if page_obj.object_list %}
   <ul class="record-list">
     {% for transfer in page_obj %}

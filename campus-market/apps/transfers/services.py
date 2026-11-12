@@ -10,9 +10,17 @@ A（accounts/catalog）与 C（loans）的依赖在函数体内按需导入，
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import F, Max
 from django.utils import timezone
 
-from .models import Application, Revocation, Transfer, TransferLog
+from .models import (
+    Application,
+    Revocation,
+    RevocationConflict,
+    RevocationRound,
+    Transfer,
+    TransferLog,
+)
 
 # 付款用途取值，与 payments.PaymentOperation.Purpose 保持一致
 PURPOSE_SALE = "sale"
@@ -333,26 +341,11 @@ def _party_side(transfer, actor):
     raise PermissionDenied("只有本次流转当事人可以操作")
 
 
-def _maybe_complete_revoke(transfer, revocation):
-    """双方一致（都同意）且去向双确认（都声明且一致）后撤销生效（CP-ST-17）。"""
-    if revocation.owner_withdrawn_at or revocation.recipient_withdrawn_at:
-        return
-    if revocation.owner_direction is None or revocation.recipient_direction is None:
-        return
-    if revocation.owner_agreed_at is None or revocation.recipient_agreed_at is None:
-        return
-    if revocation.owner_direction != revocation.recipient_direction:
-        # 双方声明不一致：撤销不能自动生效，需管理员介入（CP-BR-10）
-        _log(
-            transfer,
-            None,
-            "revoke_conflict",
-            transfer.status,
-            transfer.status,
-            "双方去向声明不一致，转管理员",
-        )
-        return
+def _complete_revoke(transfer):
+    """撤销生效：双方一致且去向双确认（CP-ST-17）。
 
+    物品下架、借用约定收尾、满足条件时的退款沿用既有收尾逻辑。
+    """
     transfer.status = Transfer.Status.REVOKED
     transfer.revoke_status = Transfer.RevokeStatus.REVOKED
     transfer.save(update_fields=["status", "revoke_status"])
@@ -375,6 +368,41 @@ def _maybe_complete_revoke(transfer, revocation):
         "双方一致且去向双确认，撤销生效",
     )
     _refund_if_paid(transfer, "协商撤销生效：双方同意并核实去向")
+
+
+def _ensure_conflict(revocation, transfer):
+    """双方去向声明不一致时建立（或复用）管理员处理入口（CP-BR-10）。"""
+    conflict, created = RevocationConflict.objects.get_or_create(
+        revocation=revocation,
+        defaults={"status": RevocationConflict.Status.OPEN},
+    )
+    if created:
+        _log(
+            transfer,
+            None,
+            "revoke_conflict",
+            transfer.status,
+            transfer.status,
+            "双方去向声明不一致，转管理员处理",
+        )
+    return conflict
+
+
+def _maybe_complete_revoke(transfer, revocation):
+    """双方一致（都同意）且去向双确认（都声明且一致）后撤销生效（CP-ST-17）。
+
+    去向声明不一致时不自动生效，转为管理员处理（CP-BR-10）。
+    """
+    if revocation.owner_withdrawn_at or revocation.recipient_withdrawn_at:
+        return
+    if revocation.owner_direction is None or revocation.recipient_direction is None:
+        return
+    if revocation.owner_agreed_at is None or revocation.recipient_agreed_at is None:
+        return
+    if revocation.owner_direction != revocation.recipient_direction:
+        _ensure_conflict(revocation, transfer)
+        return
+    _complete_revoke(transfer)
 
 
 @transaction.atomic
@@ -417,6 +445,13 @@ def declare_direction(*, actor, transfer_id, direction):
         raise ValidationError("当前不在撤销协商中")
     side = _party_side(transfer, actor)
     revocation = Revocation.objects.select_for_update().filter(transfer=transfer).latest("pk")
+
+    # 双方去向已不一致、进入管理员处理时，原去向提交入口关闭，须在最新轮次提交
+    if RevocationConflict.objects.filter(
+        revocation=revocation,
+        status__in=[RevocationConflict.Status.OPEN, RevocationConflict.Status.IN_PROGRESS],
+    ).exists():
+        raise ValidationError("双方去向不一致，正在由管理员处理，请在重新确认轮次中提交。")
 
     field = f"{side}_direction"
     if getattr(revocation, field) is not None:
@@ -484,7 +519,211 @@ def withdraw_revoke(*, actor, transfer_id):
             transfer.status,
             "双方撤回撤销申请，恢复原流程",
         )
+        # 双方撤回后关闭本次管理员处理入口，保留历史（CP-BR-09）
+        RevocationConflict.objects.filter(
+            revocation=revocation,
+            status__in=[RevocationConflict.Status.OPEN, RevocationConflict.Status.IN_PROGRESS],
+        ).update(status=RevocationConflict.Status.CLOSED, closed_at=timezone.now())
     return revocation
+
+
+def pending_revocation_conflicts():
+    """待认领的撤销去向分歧（管理员处理入口）。
+
+    只返回仍在协商、双方未撤回、尚未被认领的处理记录。
+    """
+    return (
+        RevocationConflict.objects.select_related(
+            "revocation__transfer__item",
+            "revocation__transfer__owner",
+            "revocation__transfer__recipient",
+        )
+        .filter(
+            status=RevocationConflict.Status.OPEN,
+            revocation__owner_withdrawn_at__isnull=True,
+            revocation__recipient_withdrawn_at__isnull=True,
+            revocation__transfer__revoke_status=Transfer.RevokeStatus.NEGOTIATING,
+        )
+        .order_by("created_at")
+    )
+
+
+def backfill_revocation_conflicts():
+    """为迁移前已存在、尚未建档的冲突协商补建待认领记录（幂等）。
+
+    与 migrations 中的数据迁移保持同一判定条件：仍在协商、双方同意、双方去向
+    已声明且不一致、未撤回。返回新建数量。
+    """
+    conflicting = Revocation.objects.filter(
+        transfer__revoke_status=Transfer.RevokeStatus.NEGOTIATING,
+        owner_direction__isnull=False,
+        recipient_direction__isnull=False,
+        owner_agreed_at__isnull=False,
+        recipient_agreed_at__isnull=False,
+        owner_withdrawn_at__isnull=True,
+        recipient_withdrawn_at__isnull=True,
+    ).exclude(owner_direction=F("recipient_direction"))
+    created = 0
+    for revocation in conflicting:
+        _, was_created = RevocationConflict.objects.get_or_create(
+            revocation=revocation,
+            defaults={"status": RevocationConflict.Status.OPEN},
+        )
+        if was_created:
+            created += 1
+    return created
+
+
+@transaction.atomic
+def claim_revocation_conflict(*, actor, conflict_id):
+    """管理员认领待处理的分歧（CP-BR-09）。并发认领只有一人成功。"""
+    if not actor.is_staff:
+        raise PermissionDenied("只有管理员可以认领撤销去向分歧")
+    conflict = RevocationConflict.objects.select_related("revocation__transfer").get(pk=conflict_id)
+    revocation = conflict.revocation
+    transfer = revocation.transfer
+    if transfer.revoke_status != Transfer.RevokeStatus.NEGOTIATING:
+        raise ValidationError("该协商已结束，不能认领")
+    if revocation.owner_withdrawn_at or revocation.recipient_withdrawn_at:
+        raise ValidationError("已有当事人撤回协商，不能认领")
+
+    now = timezone.now()
+    updated = RevocationConflict.objects.filter(
+        pk=conflict_id, status=RevocationConflict.Status.OPEN
+    ).update(
+        assigned_admin=actor,
+        claimed_at=now,
+        status=RevocationConflict.Status.IN_PROGRESS,
+    )
+    if not updated:
+        conflict.refresh_from_db()
+        if conflict.assigned_admin_id == actor.id:
+            return conflict
+        raise ValidationError("该处理已被其他管理员认领")
+    conflict.refresh_from_db()
+    _log(
+        transfer,
+        actor,
+        "claim_revoke_conflict",
+        transfer.status,
+        transfer.status,
+        "认领撤销去向分歧",
+    )
+    return conflict
+
+
+@transaction.atomic
+def start_revocation_round(*, actor, conflict_id, instruction):
+    """负责管理员填写处理说明并发起一轮重新确认（CP-BR-10）。"""
+    if not instruction:
+        raise ValidationError("请填写处理说明。")
+    conflict = (
+        RevocationConflict.objects.select_for_update()
+        .select_related("revocation__transfer")
+        .get(pk=conflict_id)
+    )
+    if conflict.assigned_admin_id != actor.id:
+        raise PermissionDenied("只有负责管理员可以发起重新确认")
+    if conflict.status != RevocationConflict.Status.IN_PROGRESS:
+        raise ValidationError("当前状态不能发起重新确认")
+    revocation = conflict.revocation
+    transfer = revocation.transfer
+    if transfer.revoke_status != Transfer.RevokeStatus.NEGOTIATING:
+        raise ValidationError("该协商已结束，不能发起重新确认")
+    if revocation.owner_withdrawn_at or revocation.recipient_withdrawn_at:
+        raise ValidationError("已有当事人撤回协商，暂停重新确认")
+
+    next_no = (conflict.rounds.aggregate(Max("round_no"))["round_no__max"] or 0) + 1
+    round_ = RevocationRound.objects.create(
+        conflict=conflict,
+        round_no=next_no,
+        instruction=instruction,
+        created_by=actor,
+    )
+    _log(
+        transfer,
+        actor,
+        "start_revoke_round",
+        transfer.status,
+        transfer.status,
+        f"第{next_no}轮重新确认：{instruction}",
+    )
+    return round_
+
+
+@transaction.atomic
+def declare_revocation_round(*, actor, conflict_id, round_id, direction):
+    """当事人在指定轮次内确认本人物品去向（CP-BR-10）。
+
+    仅本人可提交；旧轮次请求被拒绝；不同内容的重复提交不覆盖已确认结果。
+    """
+    if direction not in Revocation.Direction.values:
+        raise ValidationError("无效的物品去向声明")
+    conflict = (
+        RevocationConflict.objects.select_for_update()
+        .select_related("revocation__transfer")
+        .get(pk=conflict_id)
+    )
+    if conflict.status != RevocationConflict.Status.IN_PROGRESS:
+        raise ValidationError("当前处理已结束")
+    revocation = conflict.revocation
+    transfer = revocation.transfer
+    side = _party_side(transfer, actor)
+    if transfer.revoke_status != Transfer.RevokeStatus.NEGOTIATING:
+        raise ValidationError("该协商已结束")
+    if revocation.owner_withdrawn_at or revocation.recipient_withdrawn_at:
+        raise ValidationError("已有当事人撤回协商，本轮确认暂停")
+
+    current_id = conflict.rounds.order_by("-round_no").values_list("pk", flat=True).first()
+    if current_id is None or current_id != round_id:
+        raise ValidationError("该确认已过期，请刷新后按最新轮次提交")
+
+    field = f"{side}_direction"
+    updated = RevocationRound.objects.filter(pk=round_id, **{f"{field}__isnull": True}).update(
+        **{field: direction, f"{side}_direction_at": timezone.now()}
+    )
+    if not updated:
+        # 已确认过（幂等）：不同内容的重复提交不得覆盖已确认结果
+        return RevocationRound.objects.get(pk=round_id)
+    round_ = RevocationRound.objects.get(pk=round_id)
+    _log(
+        transfer,
+        actor,
+        "declare_revoke_round",
+        transfer.status,
+        transfer.status,
+        f"第{round_.round_no}轮 {side} 声明 {Revocation.Direction(direction).label}",
+    )
+    _maybe_resolve_round(conflict, round_, transfer, revocation)
+    return round_
+
+
+def _maybe_resolve_round(conflict, round_, transfer, revocation):
+    """同一轮双方去向都已确认后，判断本轮结果（CP-BR-10）。"""
+    if round_.owner_direction is None or round_.recipient_direction is None:
+        return  # 单方提交不足以撤销
+    if revocation.owner_withdrawn_at or revocation.recipient_withdrawn_at:
+        return  # 任一方撤回时暂停本轮确认
+    if revocation.owner_agreed_at is None or revocation.recipient_agreed_at is None:
+        return
+    if round_.owner_direction != round_.recipient_direction:
+        round_.result = RevocationRound.Result.CONFLICT
+        round_.save(update_fields=["result"])
+        _log(
+            transfer,
+            None,
+            "revoke_round_conflict",
+            transfer.status,
+            transfer.status,
+            f"第{round_.round_no}轮双方去向仍不一致",
+        )
+        return
+    round_.result = RevocationRound.Result.CONSISTENT
+    round_.save(update_fields=["result"])
+    _complete_revoke(transfer)
+    conflict.status = RevocationConflict.Status.RESOLVED
+    conflict.resolved_at = timezone.now()
+    conflict.save(update_fields=["status", "resolved_at"])
 
 
 @transaction.atomic

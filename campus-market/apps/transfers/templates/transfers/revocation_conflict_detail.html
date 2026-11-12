@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}撤销去向分歧处理{% endblock %}
+{% block content %}
+<a class="back-link" href="{% if is_assigned %}{% url 'transfers:admin_revocation_conflicts' %}{% else %}{% url 'transfers:transfer_detail' transfer.pk %}{% endif %}">← 返回</a>
+<header class="page-header">
+  <div>
+    <p class="eyebrow"><span></span> 撤销去向分歧 · {{ transfer.get_kind_display }}</p>
+    <h1>{{ transfer.item.name }}</h1>
+    <p class="muted">流转编号 {{ transfer.pk }} · 协商编号 {{ revocation.pk }}</p>
+  </div>
+  <span class="badge">{{ conflict.get_status_display }}</span>
+</header>
+<div class="split">
+  <div>
+    <section class="card">
+      <h2>原始去向声明</h2>
+      <dl class="facts">
+        <dt>物主</dt><dd>{{ revocation.get_owner_direction_display|default:"未声明" }}</dd>
+        <dt>获选方</dt><dd>{{ revocation.get_recipient_direction_display|default:"未声明" }}</dd>
+        <dt>撤销原因</dt><dd class="pre">{{ revocation.reason }}</dd>
+      </dl>
+    </section>
+
+    {% if conflict.status == 'open' %}
+      <section class="card"><p class="notice">等待管理员认领处理。</p></section>
+    {% else %}
+      <section class="card">
+        <h2>负责管理员</h2>
+        <p>{{ conflict.assigned_admin.username|default:"—" }} · 认领于 {{ conflict.claimed_at|date:"Y-m-d H:i" }}</p>
+      </section>
+    {% endif %}
+
+    {% if rounds %}
+      <section class="card">
+        <h2>重新确认记录</h2>
+        <ol class="record-list">
+          {% for round in rounds %}
+            <li>
+              <div>
+                <strong>第 {{ round.round_no }} 轮</strong>
+                <small>{{ round.instruction }}</small>
+                <small>物主：{{ round.get_owner_direction_display|default:"待确认" }} · 获选方：{{ round.get_recipient_direction_display|default:"待确认" }} · {{ round.get_result_display }}</small>
+              </div>
+              <time class="muted">{{ round.created_at|date:"Y-m-d H:i" }}</time>
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+    {% endif %}
+
+    {% if can_start_round %}
+      <section class="card">
+        <h2>发起重新确认</h2>
+        <p class="hint">填写处理说明后，双方将在本轮分别重新确认物品去向。</p>
+        <form method="post" action="{% url 'transfers:start_revocation_round' conflict.pk %}">
+          {% csrf_token %}{{ instruction_form.as_p }}<button type="submit">发起本轮重新确认</button>
+        </form>
+      </section>
+    {% endif %}
+
+    {% if awaiting_round %}
+      <section class="card">
+        <h2>本轮去向确认</h2>
+        <p class="hint">请确认物品当前去向（未交出 / 已退回）。</p>
+        <form method="post" action="{% url 'transfers:declare_revocation_round' conflict.pk current_round.pk %}">
+          {% csrf_token %}{{ direction_form.as_p }}<button type="submit">提交本轮去向</button>
+        </form>
+      </section>
+    {% endif %}
+  </div>
+  <aside class="card">
+    <h2>相关信息</h2>
+    <dl class="facts">
+      <dt>物主</dt><dd>{{ transfer.owner.username }}</dd>
+      <dt>获选方</dt><dd>{{ transfer.recipient.username }}</dd>
+    </dl>
+    {% if is_assigned %}
+      <a class="button secondary" href="{% url 'transfers:admin_transfer_detail' transfer.pk %}">查看流转记录</a>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}
