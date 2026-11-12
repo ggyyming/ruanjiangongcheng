@@ -247,10 +247,37 @@ class PaymentQueryAdmin(QueryAdmin):
         )
 
 
+class ItemQueryAdmin(QueryAdmin):
+    """物品资料只读视图：不展示图片字段、文件链接或存储键。"""
+
+    query_label = "物品资料"
+    fields = (
+        "name",
+        "owner",
+        "category",
+        "description",
+        "flaws",
+        "flow_type",
+        "price",
+        "deposit_display",
+        "owner_nickname",
+        "campus_area",
+        "contact",
+        "location",
+        "display_status",
+        "review_reason",
+        "reviewed_by",
+        "reviewed_at",
+    )
+    list_display = ("name", "owner", "flow_type", "display_status", "created_at")
+    search_fields = ("name", "owner__username", "owner_nickname", "category")
+
+
 data_site = DataQuerySite(name="market_data")
 data_site.register(PaymentOperation, PaymentQueryAdmin)
 data_site.register(get_user_model(), AccountAdmin)
 data_site.register(TransferLog, DeliveryRecordAdmin)
+data_site.register(Item, ItemQueryAdmin)
 
 for model, label, columns, search in (
     (Group, "用户组", ("name",), ("name",)),
@@ -266,12 +293,6 @@ for model, label, columns, search in (
         "身份申请",
         ("id", "user", "name", "status", "created_at"),
         ("user__username", "name", "staff_no", "department"),
-    ),
-    (
-        Item,
-        "物品资料",
-        ("name", "owner", "flow_type", "display_status", "created_at"),
-        ("name", "owner__username", "owner_nickname", "category"),
     ),
     (
         ItemAvailabilityChange,

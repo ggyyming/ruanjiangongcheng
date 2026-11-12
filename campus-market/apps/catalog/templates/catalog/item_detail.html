@@ -12,6 +12,11 @@
 </header>
 <div class="split">
   <div>
+    {% if item.image %}
+      <section class="card item-photo">
+        <img src="{% url 'items:image' item.id item.image_key %}" alt="{{ item.name }}">
+      </section>
+    {% endif %}
     <section class="card">
       <h2>物品介绍</h2><p class="pre">{{ item.description }}</p>
       {% if item.flaws %}<h3>使用痕迹与瑕疵</h3><p class="pre">{{ item.flaws }}</p>{% endif %}
