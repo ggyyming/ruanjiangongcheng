@@ -275,6 +275,31 @@ def apply_simulated_receipt(*, operation_id, result):
     return op
 
 
+@transaction.atomic
+def close_manual_operation(*, actor, operation_id, result, note):
+    """登记人工模拟核对结果并办结，不产生回执或新资金流水。"""
+    if not (actor.is_active and actor.is_staff and actor.is_superuser):
+        raise PermissionDenied("只有超级管理员可以办结模拟资金流水。")
+    note = note.strip()
+    if result not in PaymentOperation.ManualResult.values or not note:
+        raise ValidationError("请选择模拟核对结果并填写处理说明。")
+
+    now = timezone.now()
+    updated = PaymentOperation.objects.filter(
+        pk=operation_id, status=PaymentOperation.Status.NEEDS_MANUAL
+    ).update(
+        status=PaymentOperation.Status.MANUAL_CLOSED,
+        manual_result=result,
+        manual_note=note,
+        manual_closed_by=actor,
+        manual_closed_at=now,
+        updated_at=now,
+    )
+    if not updated:
+        raise ValidationError("只有待人工处理的流水可以办结。")
+    return PaymentOperation.objects.get(pk=operation_id)
+
+
 def _retryable_failed_statuses():
     return [
         PaymentOperation.Status.SETTLE_FAILED,

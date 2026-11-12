@@ -9,7 +9,12 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
+
+from apps.loans.services import delivery_ready
+from apps.payments.models import PaymentOperation
+from apps.payments.services import payment_deadline
 
 from . import services
 from .forms import DirectionForm, ReasonForm
@@ -111,6 +116,17 @@ def transfer_detail(request, transfer_id):
         transfer.status == Transfer.Status.RESERVED
         and transfer.revoke_status == Transfer.RevokeStatus.NONE
     )
+    can_quick_pay = (
+        awaiting_delivery
+        and not is_owner
+        and transfer.kind != Transfer.Kind.DONATION
+        and timezone.now() < payment_deadline(transfer)
+        and (transfer.kind != Transfer.Kind.BORROW or delivery_ready(transfer_id=transfer.pk))
+        and not transfer.payment_operations.filter(
+            kind=PaymentOperation.Kind.PAYMENT,
+            status__in=(PaymentOperation.Status.PAID, PaymentOperation.Status.UNKNOWN),
+        ).exists()
+    )
     return render(
         request,
         "transfers/transfer_detail.html",
@@ -125,6 +141,7 @@ def transfer_detail(request, transfer_id):
                 else ""
             ),
             "awaiting_delivery": awaiting_delivery,
+            "can_quick_pay": can_quick_pay,
             "revocation": revocation,
             "my_direction": getattr(revocation, f"{side}_direction", None),
             "my_revoke_agreement": getattr(revocation, f"{side}_agreed_at", None),

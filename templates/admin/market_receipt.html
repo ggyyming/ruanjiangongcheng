@@ -1,0 +1,14 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p>流转 #{{ operation.transfer_id }} · {{ operation.get_kind_display }} · {{ operation.get_purpose_display }} · ¥{{ operation.amount }}</p>
+  <p>当前状态：{{ operation.get_status_display }}</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="submit-row">
+      <a href="{% url 'market_data:payments_paymentoperation_changelist' %}">返回资金流水</a>
+      <input type="submit" value="{{ submit_label }}" class="default">
+    </div>
+  </form>
+{% endblock %}

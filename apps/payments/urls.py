@@ -9,4 +9,5 @@ app_name = "payments"
 urlpatterns = [
     path("<int:transfer_id>/", views.payments_for_transfer, name="payments_for_transfer"),
     path("<int:transfer_id>/pay/", views.pay, name="pay"),
+    path("<int:transfer_id>/quick-pay/", views.quick_pay, name="quick_pay"),
 ]

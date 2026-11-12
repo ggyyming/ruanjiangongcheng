@@ -14,6 +14,12 @@
         <span>物主 · {% if transfer.owner_confirmed_at %}已确认{% else %}待确认{% endif %}</span>
         <span>获选方 · {% if transfer.recipient_confirmed_at %}已确认{% else %}待确认{% endif %}</span>
       </div>
+      {% if can_quick_pay %}
+        <form method="post" action="{% url 'payments:quick_pay' transfer.pk %}">
+          {% csrf_token %}
+          <button type="submit">{% if transfer.kind == 'borrow' %}模拟支付押金{% else %}模拟支付货款{% endif %}</button>
+        </form>
+      {% endif %}
       {% if awaiting_delivery %}
         {% if my_confirmation %}
           <p class="muted">你已确认交付，正在等待对方确认。</p>

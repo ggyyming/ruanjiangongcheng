@@ -11,6 +11,7 @@
 重试次数（不含首次）留痕；发起不等于到账。
 """
 
+from django.conf import settings
 from django.db import models
 
 
@@ -45,6 +46,12 @@ class PaymentOperation(models.Model):
         # 通用
         UNKNOWN = "unknown", "结果未知"
         NEEDS_MANUAL = "needs_manual", "转人工处理"
+        MANUAL_CLOSED = "manual_closed", "人工已办结"
+
+    class ManualResult(models.TextChoices):
+        SUCCESS = "success", "核对为成功"
+        FAILURE = "failure", "核对为失败"
+        UNKNOWN = "unknown", "无法确认"
 
     transfer = models.ForeignKey(
         "transfers.Transfer",
@@ -62,6 +69,18 @@ class PaymentOperation(models.Model):
     last_receipt = models.CharField(
         max_length=32, blank=True, default="", help_text="最近一次模拟回执结果"
     )
+    manual_result = models.CharField(
+        "人工核对结果", max_length=16, choices=ManualResult.choices, blank=True
+    )
+    manual_note = models.TextField("人工处理说明", blank=True)
+    manual_closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="人工办结人",
+    )
+    manual_closed_at = models.DateTimeField("人工办结时间", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

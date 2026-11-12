@@ -1,12 +1,13 @@
 """模拟资金页面视图。
 
 付款/结算/退款均为模拟，展示时明确标注（模拟）。资金状态变更只调用 services，
-普通用户无法通过页面直接把处理中写成到账（共同约定 §4）。
+快捷模拟付款由获选接收方触发，结果由服务器模拟。
 """
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -85,3 +86,23 @@ def pay(request, transfer_id):
     except (ValidationError, PermissionDenied) as exc:
         messages.error(request, _err(exc))
     return redirect("payments:payments_for_transfer", transfer_id=transfer_id)
+
+
+@login_required
+@require_POST
+def quick_pay(request, transfer_id):
+    get_object_or_404(Transfer, pk=transfer_id, recipient=request.user)
+    try:
+        with transaction.atomic():
+            payment = services.pay_transfer(actor=request.user, transfer_id=transfer_id)
+            payment = services.apply_simulated_receipt(
+                operation_id=payment.pk, result=services.RECEIPT_SUCCESS
+            )
+    except ValidationError as exc:
+        messages.error(request, _err(exc))
+    else:
+        if payment.status == PaymentOperation.Status.PAID:
+            messages.success(request, "模拟付款成功，可以继续确认交付。")
+        else:
+            messages.info(request, f"当前模拟付款状态：{payment.get_status_display()}。")
+    return redirect("transfers:transfer_detail", transfer_id=transfer_id)

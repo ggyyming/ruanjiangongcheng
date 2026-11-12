@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
 
+from django.contrib.admin.models import LogEntry
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
@@ -16,9 +17,9 @@ from apps.catalog.services import create_item, edit_item, relist_item, review_it
 from apps.loans import services as loans
 from apps.loans.models import BorrowAgreement, Dispute, Notification
 from apps.payments.models import PaymentOperation
-from apps.payments.services import request_refund
+from apps.payments.services import MAX_AUTO_RETRIES, initiate_settlement, request_refund
 from apps.transfers import services as transfers
-from apps.transfers.models import Application, Transfer
+from apps.transfers.models import Application, Transfer, TransferLog
 
 
 class MarketIntegrationTests(TestCase):
@@ -71,6 +72,177 @@ class MarketIntegrationTests(TestCase):
         call_command(
             "simulate_receipt", operation_id=operation.pk, result=result, stdout=StringIO()
         )
+
+    def test_console_receipt_requires_superuser_and_records_result(self):
+        transfer = self._reserve(self._item(Item.FlowType.SALE))
+        self._post(self.recipient, "payments:pay", transfer.pk)
+        operation = transfer.payment_operations.get()
+        url = reverse("market_data:simulate_receipt", args=[operation.pk])
+        listing = reverse("market_data:payments_paymentoperation_changelist")
+
+        self.client.force_login(self.admin)
+        self.assertNotContains(self.client.get(listing), "模拟回执")
+        self.assertEqual(self.client.post(url, {"result": "success"}).status_code, 403)
+        operation.refresh_from_db()
+        self.assertEqual(operation.status, PaymentOperation.Status.PAYING)
+
+        operator = get_user_model().objects.create_user(
+            username="console-operator", is_staff=True, is_superuser=True
+        )
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(operator)
+        self.assertContains(client.get(listing), "模拟回执")
+        page = client.get(url)
+        self.assertContains(page, "提交模拟回执")
+        self.assertEqual(client.post(url, {"result": "success"}).status_code, 403)
+        csrf = client.cookies["csrftoken"].value
+        self.assertContains(
+            client.post(url, {"result": "invalid", "csrfmiddlewaretoken": csrf}),
+            "选择一个有效的选项",
+        )
+        operation.refresh_from_db()
+        self.assertEqual(operation.status, PaymentOperation.Status.PAYING)
+        self.assertRedirects(
+            client.post(url, {"result": "success", "csrfmiddlewaretoken": csrf}), listing
+        )
+        operation.refresh_from_db()
+        self.assertEqual(operation.status, PaymentOperation.Status.PAID)
+        self.assertTrue(LogEntry.objects.filter(user=operator, object_id=operation.pk).exists())
+
+    def test_manual_settlement_closure_locks_old_operation_and_keeps_new_flow_independent(self):
+        transfer = self._reserve(self._item(Item.FlowType.SALE))
+        self._post(self.recipient, "payments:quick_pay", transfer.pk)
+        self._post(self.owner, "transfers:confirm_delivery", transfer.pk)
+        self._post(self.recipient, "transfers:confirm_delivery", transfer.pk)
+        operation = transfer.payment_operations.get(kind=PaymentOperation.Kind.SETTLEMENT)
+        manual = reverse("market_data:close_manual_operation", args=[operation.pk])
+        receipt = reverse("market_data:simulate_receipt", args=[operation.pk])
+        listing = reverse("market_data:payments_paymentoperation_changelist")
+        details = reverse("market_data:payments_paymentoperation_change", args=[operation.pk])
+        data = {"result": "success", "note": "已核对模拟记录"}
+
+        operator = get_user_model().objects.create_superuser(username="manual-operator")
+        self.client.force_login(operator)
+        self.assertEqual(self.client.post(manual, data).status_code, 404)
+        for _ in range(MAX_AUTO_RETRIES + 1):
+            self._receipt(operation, "failure")
+            call_command("process_payment_operations", stdout=StringIO())
+
+        self.client.force_login(self.admin)
+        self.assertNotContains(self.client.get(listing), "登记并办结")
+        self.assertEqual(self.client.post(manual, data).status_code, 403)
+        self.client.force_login(operator)
+        self.assertContains(self.client.get(listing), "登记并办结")
+        self.assertContains(self.client.get(manual), "模拟核对结果")
+        self.assertEqual(self.client.post(receipt, {"result": "success"}).status_code, 404)
+        self.assertContains(self.client.post(manual, {**data, "note": "  "}), "这个字段是必填项")
+        self.assertRedirects(self.client.post(manual, data), listing)
+
+        operation.refresh_from_db()
+        closed_at = operation.manual_closed_at
+        self.assertIsNotNone(closed_at)
+        self.assertEqual(operation.manual_closed_by, operator)
+        self.assertEqual(operation.status, PaymentOperation.Status.MANUAL_CLOSED)
+        self.assertEqual(operation.manual_result, PaymentOperation.ManualResult.SUCCESS)
+        self.assertEqual(operation.manual_note, data["note"])
+        self.assertContains(self.client.get(details), data["note"])
+        self.assertNotContains(self.client.get(listing), "登记并办结")
+
+        self.assertEqual(self.client.post(manual, {**data, "note": "覆盖"}).status_code, 404)
+        self.assertEqual(self.client.post(details, {"status": "settling"}).status_code, 403)
+        self.assertEqual(self.client.post(receipt, {"result": "success"}).status_code, 404)
+        self._receipt(operation)
+        call_command("process_payment_operations", stdout=StringIO())
+        self.assertEqual(initiate_settlement(transfer_id=transfer.pk).pk, operation.pk)
+
+        new_transfer = self._reserve(self._item(Item.FlowType.SALE))
+        self._post(self.recipient, "payments:quick_pay", new_transfer.pk)
+        self._post(self.owner, "transfers:confirm_delivery", new_transfer.pk)
+        self._post(self.recipient, "transfers:confirm_delivery", new_transfer.pk)
+        new_operation = new_transfer.payment_operations.get(kind=PaymentOperation.Kind.SETTLEMENT)
+        self.assertNotEqual(new_operation.business_id, operation.business_id)
+        self.assertEqual(new_operation.status, PaymentOperation.Status.SETTLING)
+        self._receipt(new_operation)
+        new_operation.refresh_from_db()
+        self.assertEqual(new_operation.status, PaymentOperation.Status.SETTLED)
+        self.assertEqual(transfer.payment_operations.count(), 2)
+        operation.refresh_from_db()
+        self.assertEqual(operation.status, PaymentOperation.Status.MANUAL_CLOSED)
+        self.assertEqual(operation.last_receipt, "failure")
+        self.assertEqual(operation.attempts, MAX_AUTO_RETRIES)
+        self.assertEqual(operation.manual_note, data["note"])
+        self.assertEqual(operation.manual_closed_at, closed_at)
+
+    def test_console_manages_accounts_and_delivery_logs(self):
+        transfer = self._reserve(self._item(Item.FlowType.GIFT))
+        users = get_user_model()
+        operator = users.objects.create_superuser(username="record-operator")
+        account_add = reverse("market_data:auth_user_add")
+        account_list = reverse("market_data:auth_user_changelist")
+        owner_delete = reverse("market_data:auth_user_delete", args=[self.owner.pk])
+        operator_delete = reverse("market_data:auth_user_delete", args=[operator.pk])
+        log_add = reverse("market_data:transfers_transferlog_add")
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(account_add).status_code, 403)
+        self.assertEqual(self.client.get(log_add).status_code, 403)
+        self.assertNotContains(self.client.get(account_list), owner_delete)
+
+        self.client.force_login(operator)
+        listing = self.client.get(account_list)
+        self.assertNotContains(listing, owner_delete)
+        self.assertNotContains(listing, operator_delete)
+        self.assertEqual(self.client.get(operator_delete).status_code, 403)
+        password = "Example!2026-long"
+        response = self.client.post(
+            account_add, {"username": "demo-console", "password1": password, "password2": password}
+        )
+        self.assertEqual(response.status_code, 302)
+        account = users.objects.get(username="demo-console")
+        self.assertTrue(account.check_password(password))
+        account_detail = reverse("market_data:auth_user_change", args=[account.pk])
+        account_delete = reverse("market_data:auth_user_delete", args=[account.pk])
+        self.assertContains(self.client.get(account_detail), f'href="{account_delete}"')
+        self.assertEqual(self.client.get(account_delete).status_code, 200)
+        self.assertEqual(
+            self.client.post(
+                log_add,
+                {"transfer": transfer.pk, "actor": account.pk, "action": "confirm_delivery"},
+            ).status_code,
+            302,
+        )
+        record = TransferLog.objects.get(transfer=transfer, actor=account)
+        self.assertEqual(
+            self.client.post(
+                reverse("market_data:transfers_transferlog_delete", args=[record.pk]),
+                {"post": "yes"},
+            ).status_code,
+            302,
+        )
+        self.assertFalse(TransferLog.objects.filter(pk=record.pk).exists())
+        self.assertEqual(
+            self.client.post(account_delete, {"post": "yes"}).status_code,
+            302,
+        )
+        self.assertFalse(users.objects.filter(pk=account.pk).exists())
+        self.assertTrue(Transfer.objects.filter(pk=transfer.pk).exists())
+
+    def test_recipient_can_complete_simulated_payment_from_delivery(self):
+        transfer = self._reserve(self._item(Item.FlowType.SALE))
+        detail = reverse("transfers:transfer_detail", args=[transfer.pk])
+        quick_pay = reverse("payments:quick_pay", args=[transfer.pk])
+        self.client.force_login(self.owner)
+        self.assertNotContains(self.client.get(detail), "模拟支付货款")
+        self.assertEqual(self.client.post(quick_pay).status_code, 404)
+        self.assertFalse(transfer.payment_operations.exists())
+
+        self.client.force_login(self.recipient)
+        self.assertContains(self.client.get(detail), "模拟支付货款")
+        for _ in range(2):
+            self.assertRedirects(self.client.post(quick_pay), detail)
+        payment = transfer.payment_operations.get()
+        self.assertEqual(payment.status, PaymentOperation.Status.PAID)
+        self.assertNotContains(self.client.get(detail), "模拟支付货款")
+        self.assertContains(self.client.get(detail), "确认已收到")
 
     def _confirm_delivery(self, transfer):
         self._post(self.owner, "transfers:confirm_delivery", transfer.pk)

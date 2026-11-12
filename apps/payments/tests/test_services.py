@@ -120,6 +120,21 @@ class RetryTests(TestCase):
         self.assertEqual(op.status, PaymentOperation.Status.NEEDS_MANUAL)
         self.assertEqual(op.attempts, services.MAX_AUTO_RETRIES)
 
+        actor = User.objects.create_superuser(username="refund_operator")
+        services.close_manual_operation(
+            actor=actor, operation_id=op.pk, result="unknown", note="待核实"
+        )
+        with self.assertRaises(ValidationError):
+            services.close_manual_operation(
+                actor=actor, operation_id=op.pk, result="success", note="重复登记"
+            )
+        self.assertIsNone(services.reconcile_and_retry(op))
+        refund = services.request_refund(transfer_id=transfer.pk, reason="再次退款")
+        self.assertEqual(refund.pk, op.pk)
+        self.assertEqual(refund.status, PaymentOperation.Status.MANUAL_CLOSED)
+        self.assertEqual(refund.manual_note, "待核实")
+        self.assertEqual(refund.reason, "测试退款")
+
     def test_unknown_not_blindly_retried(self):
         transfer = _reserved_transfer(kind="borrow", deposit="20.00")
         transfer.status = Transfer.Status.CANCELLED
