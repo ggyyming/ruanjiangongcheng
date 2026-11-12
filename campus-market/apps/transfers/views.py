@@ -17,8 +17,8 @@ from apps.payments.models import PaymentOperation
 from apps.payments.services import payment_deadline
 
 from . import services
-from .forms import DirectionForm, ReasonForm
-from .models import Application, Revocation, Transfer
+from .forms import DirectionForm, InstructionForm, ReasonForm
+from .models import Application, Revocation, RevocationConflict, RevocationRound, Transfer
 
 
 def _err(exc):
@@ -109,6 +109,12 @@ def transfer_detail(request, transfer_id):
         raise PermissionDenied("只有本次流转当事人可以查看")
 
     revocation = Revocation.objects.filter(transfer=transfer).order_by("-pk").first()
+    conflict = None
+    if revocation:
+        conflict = RevocationConflict.objects.filter(
+            revocation=revocation,
+            status__in=[RevocationConflict.Status.OPEN, RevocationConflict.Status.IN_PROGRESS],
+        ).first()
     is_owner = request.user.id == transfer.owner_id
     side = "owner" if is_owner else "recipient"
     my_confirmation = transfer.owner_confirmed_at if is_owner else transfer.recipient_confirmed_at
@@ -143,6 +149,7 @@ def transfer_detail(request, transfer_id):
             "awaiting_delivery": awaiting_delivery,
             "can_quick_pay": can_quick_pay,
             "revocation": revocation,
+            "conflict": conflict,
             "my_direction": getattr(revocation, f"{side}_direction", None),
             "my_revoke_agreement": getattr(revocation, f"{side}_agreed_at", None),
             "my_withdrawal": getattr(revocation, f"{side}_withdrawn_at", None),
@@ -267,3 +274,121 @@ def withdraw_revoke(request, transfer_id):
     except (ValidationError, PermissionDenied) as exc:
         messages.error(request, _err(exc))
     return redirect("transfers:transfer_detail", transfer_id=transfer_id)
+
+
+@login_required
+def admin_revocation_conflicts(request):
+    if not request.user.is_staff:
+        raise PermissionDenied("只有管理员可以处理撤销去向分歧。")
+    conflicts = services.pending_revocation_conflicts()
+    return render(request, "transfers/admin_revocation_conflicts.html", {"conflicts": conflicts})
+
+
+@login_required
+def revocation_conflict_detail(request, conflict_id):
+    conflict = get_object_or_404(
+        RevocationConflict.objects.select_related(
+            "revocation__transfer__item",
+            "revocation__transfer__owner",
+            "revocation__transfer__recipient",
+            "assigned_admin",
+        ),
+        pk=conflict_id,
+    )
+    transfer = conflict.revocation.transfer
+    user = request.user
+    is_assigned = conflict.assigned_admin_id == user.id
+    is_party = user.id in (transfer.owner_id, transfer.recipient_id)
+    if not (is_assigned or is_party):
+        raise PermissionDenied("只有负责管理员或本次流转当事人可以查看")
+
+    revocation = conflict.revocation
+    side = "owner" if user.id == transfer.owner_id else "recipient"
+    current_round = conflict.current_round
+    my_round_direction = None
+    if current_round is not None:
+        my_round_direction = getattr(current_round, f"{side}_direction", None)
+    not_withdrawn = (
+        revocation.owner_withdrawn_at is None and revocation.recipient_withdrawn_at is None
+    )
+    awaiting_round = (
+        conflict.status == RevocationConflict.Status.IN_PROGRESS
+        and current_round is not None
+        and is_party
+        and my_round_direction is None
+        and not_withdrawn
+    )
+    can_start_round = (
+        conflict.status == RevocationConflict.Status.IN_PROGRESS
+        and is_assigned
+        and (current_round is None or current_round.result == RevocationRound.Result.CONFLICT)
+        and not_withdrawn
+    )
+    return render(
+        request,
+        "transfers/revocation_conflict_detail.html",
+        {
+            "conflict": conflict,
+            "revocation": revocation,
+            "transfer": transfer,
+            "rounds": conflict.rounds.select_related("created_by"),
+            "current_round": current_round,
+            "is_assigned": is_assigned,
+            "is_party": is_party,
+            "awaiting_round": awaiting_round,
+            "can_start_round": can_start_round,
+            "direction_form": DirectionForm(),
+            "instruction_form": InstructionForm(),
+        },
+    )
+
+
+@login_required
+@require_POST
+def claim_revocation_conflict(request, conflict_id):
+    try:
+        conflict = services.claim_revocation_conflict(actor=request.user, conflict_id=conflict_id)
+        messages.success(request, "已认领该撤销去向分歧，请发起重新确认。")
+        return redirect("transfers:revocation_conflict_detail", conflict_id=conflict.pk)
+    except (ValidationError, PermissionDenied) as exc:
+        messages.error(request, _err(exc))
+    return redirect("transfers:admin_revocation_conflicts")
+
+
+@login_required
+@require_POST
+def start_revocation_round(request, conflict_id):
+    form = InstructionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "请填写处理说明")
+        return redirect("transfers:revocation_conflict_detail", conflict_id=conflict_id)
+    try:
+        services.start_revocation_round(
+            actor=request.user,
+            conflict_id=conflict_id,
+            instruction=form.cleaned_data["instruction"],
+        )
+        messages.success(request, "已发起新一轮重新确认")
+    except (ValidationError, PermissionDenied) as exc:
+        messages.error(request, _err(exc))
+    return redirect("transfers:revocation_conflict_detail", conflict_id=conflict_id)
+
+
+@login_required
+@require_POST
+def declare_revocation_round(request, conflict_id, round_id):
+    form = DirectionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "请选择物品去向")
+        return redirect("transfers:revocation_conflict_detail", conflict_id=conflict_id)
+    try:
+        services.declare_revocation_round(
+            actor=request.user,
+            conflict_id=conflict_id,
+            round_id=round_id,
+            direction=form.cleaned_data["direction"],
+        )
+        messages.success(request, "已提交本轮物品去向")
+    except (ValidationError, PermissionDenied) as exc:
+        messages.error(request, _err(exc))
+    return redirect("transfers:revocation_conflict_detail", conflict_id=conflict_id)

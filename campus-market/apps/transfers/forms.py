@@ -23,3 +23,13 @@ class DirectionForm(forms.Form):
         choices=Revocation.Direction.choices,
         widget=forms.RadioSelect,
     )
+
+
+class InstructionForm(forms.Form):
+    """负责管理员发起重新确认轮次时的处理说明（CP-BR-10）。"""
+
+    instruction = forms.CharField(
+        label="处理说明",
+        widget=forms.Textarea(attrs={"rows": 2}),
+        max_length=500,
+    )
