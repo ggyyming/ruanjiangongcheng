@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}登录 · 需求文档智能审查{% endblock %}
+{% block content %}
+<h1>登录</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">登录</button>
+</form>
+{% endblock %}

@@ -1,57 +1,15 @@
-# 软件工程课程项目
+# 软件工程课程工作区
 
-这是校园物品流转平台的 Django 项目。用户可以浏览经审核的物品，通过校内身份审核后可发布或申请买卖、赠送和借用。付款、结算和退款均为模拟。
+两个工程共用一个 Git 仓库，各自维护需求、代码、依赖和运行数据。
 
-## 环境要求
+| 工程 | 从这里开始 |
+| --- | --- |
+| 校园物品流转平台 | [运行说明](campus-market/README.md) · [工程索引](campus-market/PROJECT_INDEX.md) |
+| 需求文档智能审查系统 | [开发入口](document-review/README.md) · [启动评审](document-review/工程设计/01_启动评审.md) |
 
-- Python 3.13
-- uv
-- Git
+## 根目录共用约束
 
-## 首次启动
-
-```powershell
-uv sync --frozen
-uv run python manage.py migrate
-uv run python manage.py createsuperuser
-uv run python manage.py runserver
-```
-
-浏览器打开 [物品市场](http://127.0.0.1:8000/)。已有管理员账号时可以跳过创建步骤。健康检查地址为 `/health/`。
-
-## 演示流程
-
-1. 注册两个演示用户，分别提交虚构校内身份资料。用管理员账号登录，在「我的账户 → 身份审核」认领并审核。
-2. 一个用户发布物品，管理员在「物品审核」通过后，另一个用户从物品详情提交流转申请。物主从「查看物品申请」选择接收方，双方从「我的流转」进入详情。
-3. 赠送由双方确认交付。买卖由接收方发起模拟付款，收到成功回执后双方确认交付，再单独处理结算。借用先由双方确认归还时间和押金，再模拟付款及确认借出。借用人确认交还、物主确认收回后，系统发起押金退款。
-
-买家或借用人在「流转详情 → 交付进度」点击「模拟支付货款」或「模拟支付押金」，即可完成模拟付款。借用须先确认归还时间和押金。付款完成后仍需双方分别确认交付。
-
-超级管理员可打开 [数据控制台](http://127.0.0.1:8000/data/)，新增、编辑或删除普通账号及交付与流转操作记录。删除使用后台确认页，账号存在关联数据时会显示删除影响或数据库保护限制。操作记录是流转日志，交付状态通过业务流程推进。「模拟资金流水」仍提供付款、结算和退款的模拟回执，支持成功、失败或未知。
-
-终端也可以提交回执。运行以下命令时将 `123` 替换成资金明细里显示的实际操作编号：
-
-```powershell
-uv run python manage.py simulate_receipt --operation-id 123 --result success
-```
-
-回执结果也可以用 `failure` 或 `unknown`。用以下命令扫描付款超时、迟到入账、退款与结算重试以及借用逾期：
-
-```powershell
-uv run python manage.py process_market_jobs
-```
-
-演示可手动执行扫描。需要定时运行时，可由 Windows 任务计划程序在项目目录每分钟调用一次该命令。
-
-## 常用检查
-
-```powershell
-uv run python manage.py check
-uv run python manage.py makemigrations --check --dry-run
-uv run python manage.py test
-uv run ruff check apps config tests manage.py
-```
-
-## 工程导航
-
-从 [工程索引](PROJECT_INDEX.md) 查找正式运行代码、课程材料、历史交接和提交成品。各版本和历史材料见 [记录](记录/README.md)。按具体文件查找时打开 [逐文件清单](docs/FILE_INDEX.md)。架构与技术选型见 [工程架构](docs/architecture.md)。
+- [AGENTS.md](AGENTS.md) 适用于两个工程，规定最小改动、阶段验证、清理与 Git 检查；[.editorconfig](.editorconfig) 统一编辑格式，[.gitignore](.gitignore) 统一排除本地数据库、虚拟环境、缓存和密钥文件。
+- 先进入对应工程目录再运行它的依赖安装、启动、测试和检查命令。各工程使用自己的依赖锁、虚拟环境和数据库；在根目录查看整体 Git 状态和审查差异。
+- 业务需求、架构、接口及部署约束记录在对应工程。变更业务边界时，同步更新需求编号、设计和验收依据。两套工程之间只保留历史资料引用，不从另一个工程导入业务代码或读取其数据库。
+- 原联合版资料留在市场工程的 [历史文档](campus-market/docs/分主题文档说明.md) 和 [记录](campus-market/记录/README.md)，用于追溯早期证据。智能审查的独立需求、模型和原型以其工程目录为入口。

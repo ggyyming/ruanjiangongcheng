@@ -28,7 +28,8 @@ for folder, prefix, expected in [
     ('校园物品流转平台', 'CP', (27, 8, 37, 11)),
     ('需求文档智能审查系统', 'DR', (13, 5, 15, 7)),
 ]:
-    root = BASE / folder
+    workspace = BASE.parents[1]
+    root = BASE / folder if prefix == 'CP' else workspace / 'document-review/docs'
     requirements, models, states, scenes = expected
     def asset(name):
         attachment = root / '附件'
@@ -111,7 +112,17 @@ for folder, prefix, expected in [
             if not target or re.match(r'\w+://', target):
                 continue
             path = (md.parent / target).resolve()
-            assert path.is_relative_to(root.resolve()), (md, '跨文件夹引用', target)
+            handoff_links = {
+                workspace / 'AGENTS.md',
+                BASE.parent / 'README.md',
+                BASE / 'architecture.md',
+            }
+            is_handoff_link = (
+                prefix == 'CP'
+                and md.relative_to(root).as_posix() == '开发协作/下一轮三模块开发与分支交接说明.md'
+                and path in handoff_links
+            )
+            assert path.is_relative_to(root) or is_handoff_link, (md, '跨文件夹引用', target)
             assert path.exists(), (md, '引用缺失', target)
             checked_links += 1
     # History, original feedback and the shared executable are copied without edits.
@@ -152,5 +163,5 @@ for folder, prefix, expected in [
                 assert fragment in destination.ids, (navigation, link, '页内目标不存在')
         assert re.findall(r'<h2>(\d{2}) ', nav_text) == [f'{i:02d}' for i in range(1, 9)], '附件导航分类顺序错误'
         print(f'通过：校园附件导航{len(nav.links)}个本地入口及页内目标；分类01至08顺序正确。')
-    print(f'通过：{folder}，三份报告；需求/图/状态/场景={counts}；{checked_links}个本地引用有效且未越出文件夹；模型版本和历史证据核验通过。')
+    print(f'通过：{folder}，三份报告；需求/图/状态/场景={counts}；{checked_links}个本地引用有效；模型版本和历史证据核验通过。')
 print('范围：只核验拆分内容、文件引用及复制完整性，不增加业务或人工走查结论。')

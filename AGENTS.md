@@ -157,6 +157,8 @@ If the ambiguity is small and the safe choice is obvious, proceed with the safe 
 
 ## Project-Specific Commands
 
+The commands below apply to the Django market platform. Run them from `campus-market/`. For the document review project, start from `document-review/README.md`.
+
 - Install dependencies: `uv sync`
 - Run development server: `uv run python manage.py runserver`
 - Run Django checks: `uv run python manage.py check`

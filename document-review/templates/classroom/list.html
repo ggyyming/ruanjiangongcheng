@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>我的教学班</h1>
+{% if user.role == "teacher" %}
+<p><a href="{% url 'class-create' %}">创建教学班</a></p>
+{% else %}
+<p><a href="{% url 'class-join' %}">凭邀请码加入教学班</a></p>
+{% endif %}
+<ul>
+    {% for teaching_class in classes %}
+    <li><a href="{% url 'class-detail' teaching_class.pk %}">{{ teaching_class }}</a></li>
+    {% empty %}
+    <li>暂无教学班。</li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ enrollment.teaching_class }}</h1>
+{% if enrollment.group %}
+<p>我的小组：{{ enrollment.group }}</p>
+{% if enrollment.group.work %}
+<p><a href="{% url 'work-detail' enrollment.group.work.pk %}">{{ enrollment.group.work.title }}</a></p>
+{% else %}
+<p>本组尚未提交作品。</p>
+{% endif %}
+{% else %}
+<p>等待教师分组。</p>
+{% endif %}
+{% endblock %}

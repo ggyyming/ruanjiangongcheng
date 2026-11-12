@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ work.title }}</h1>
+<p><a href="{% url 'class-detail' work.group.teaching_class_id %}">{{ work.group.teaching_class }}</a></p>
+<p>提交小组：{{ work.group.name }}</p>
+{% endblock %}

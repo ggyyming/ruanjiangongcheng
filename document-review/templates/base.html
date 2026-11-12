@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}需求文档智能审查{% endblock %}</title>
+    <style>
+        body { margin: 0; color: #152938; background: #f4f7fa; font: 1rem/1.55 system-ui, sans-serif; }
+        header { background: #132b40; color: white; padding: 1rem max(1rem, calc((100% - 64rem) / 2)); }
+        header a { color: white; font-weight: 700; }
+        nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        nav form { margin-left: auto; }
+        main { margin: 2rem auto; padding: 0 1rem; max-width: 64rem; }
+        a { color: #075587; }
+        button { background: #075587; color: white; border: 0; border-radius: .35rem; padding: .45rem .85rem; cursor: pointer; }
+        input, select { max-width: 100%; padding: .4rem; font: inherit; }
+        h1, h2 { line-height: 1.25; }
+        .table-scroll { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: .6rem .75rem; border-bottom: 1px solid #dbe5ed; text-align: left; }
+        .errorlist { color: #9c2535; }
+        code { overflow-wrap: anywhere; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav aria-label="主导航">
+            <a href="{% url 'class-list' %}">需求文档智能审查</a>
+            {% if user.is_authenticated %}
+            <span>{{ user.username }} {{ user.get_role_display }}</span>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit">退出登录</button>
+            </form>
+            {% endif %}
+        </nav>
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ teaching_class }}</h1>
+<p>学生入班邀请码 <code>{{ teaching_class.invite_code }}</code></p>
+<h2>小组作品</h2>
+<p><a href="{% url 'group-create' teaching_class.pk %}">创建小组</a></p>
+<div class="table-scroll">
+    <table>
+        <thead><tr><th scope="col">小组</th><th scope="col">提交状态</th><th scope="col">作品</th></tr></thead>
+        <tbody>
+            {% for group in groups %}
+            <tr>
+                <th scope="row">{{ group.name }}</th>
+                {% if group.work %}
+                <td>已提交 · 成员已锁定</td>
+                <td><a href="{% url 'work-detail' group.work.pk %}">{{ group.work.title }}</a></td>
+                {% else %}
+                <td>未提交</td><td>—</td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">暂无小组。</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<h2>学生名单</h2>
+<div class="table-scroll">
+    <table>
+        <thead><tr><th scope="col">学生</th><th scope="col">当前分组</th><th scope="col">操作</th></tr></thead>
+        <tbody>
+            {% for enrollment in enrollments %}
+            <tr>
+                <th scope="row">{{ enrollment.student.username }}</th>
+                <td>{{ enrollment.group|default:"待分组" }}</td>
+                <td><a href="{% url 'group-assign' teaching_class.pk enrollment.pk %}">为 {{ enrollment.student.username }} 分组</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">暂无学生入班。</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
