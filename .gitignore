@@ -14,4 +14,5 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+/campus-market/var/uploads/
 
