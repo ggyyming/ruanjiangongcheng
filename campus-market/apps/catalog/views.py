@@ -1,10 +1,13 @@
 """物品市场页面（A 包，路径 /items/）。"""
 
+import mimetypes
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -108,11 +111,14 @@ def item_detail(request, item_id):
 
 @login_required
 def item_create(request):
-    form = ItemForm(request.POST or None)
+    form = ItemForm(request.POST or None, request.FILES or None)
     can_publish = is_verified(user_id=request.user.id)
     if request.method == "POST" and form.is_valid():
         try:
-            item = create_item(owner=request.user, **form.cleaned_data)
+            data = dict(form.cleaned_data)
+            image = data.pop("image")
+            data.pop("remove_image", None)
+            item = create_item(owner=request.user, image=image, **data)
             messages.success(request, "已提交审核。审核通过后，物品会出现在市场。")
             return redirect("items:detail", item_id=item.id)
         except PermissionDenied as exc:
@@ -132,10 +138,15 @@ def item_edit(request, item_id):
         except ValidationError as exc:
             messages.info(request, "。".join(exc.messages))
             return redirect("items:detail", item_id=item.pk)
-    form = ItemForm(request.POST or None, instance=item)
+    form = ItemForm(request.POST or None, request.FILES or None, instance=item)
     if request.method == "POST" and form.is_valid():
         try:
-            item = edit_item(owner=request.user, item_id=item_id, **form.cleaned_data)
+            data = dict(form.cleaned_data)
+            image = data.pop("image")
+            remove_image = data.pop("remove_image", False)
+            item = edit_item(
+                owner=request.user, item_id=item_id, image=image, remove_image=remove_image, **data
+            )
         except ValidationError as exc:
             form.add_error(None, exc)
         else:
@@ -193,3 +204,31 @@ def review(request, item_id):
         except ValidationError as exc:
             form.add_error(None, exc)
     return render(request, "catalog/review.html", {"item": item, "form": form})
+
+
+def item_image(request, item_id, image_key):
+    """物品图片入口（每次请求重新鉴权，URL 带版本标识）。
+
+    可取得当前图片的角色：物主、有审核权限的管理员（待审预览）、
+    进行中流转的双方、以及 can_display 为真的公开访问（含匿名访客）。
+    替换或移除后旧地址（旧 key）不再指向新图；缓存策略保证下架或转待审后撤销访问。
+    """
+    item = get_object_or_404(Item, id=item_id)
+    if not item.image or item.image_key != image_key:
+        raise Http404("图片不存在或已被替换")
+    transfer = active_transfer_for_item(item_id=item.id)
+    is_owner = request.user.is_authenticated and item.owner_id == request.user.id
+    is_staff = request.user.is_authenticated and request.user.is_staff
+    is_party = bool(transfer and request.user.id in (transfer.owner_id, transfer.recipient_id))
+    if not (is_owner or is_staff or is_party or can_display(item_id=item.id)):
+        raise PermissionDenied("物品图片不可见")
+    try:
+        with item.image.open() as image_file:
+            data = image_file.read()
+    except FileNotFoundError:
+        raise Http404("图片文件不存在")
+    response = HttpResponse(
+        data, content_type=mimetypes.guess_type(item.image.name)[0] or "image/jpeg"
+    )
+    response["Cache-Control"] = "private, no-store"
+    return response

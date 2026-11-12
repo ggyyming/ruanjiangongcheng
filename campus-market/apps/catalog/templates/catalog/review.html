@@ -4,6 +4,9 @@
 <div class="form-shell">
   <a class="back-link" href="{% url 'items:review_list' %}">← 物品审核</a>
   <header class="page-header"><div><h1>审核物品</h1><p class="muted">{{ item.name }}</p></div><span class="badge warn">{{ item.get_display_status_display }}</span></header>
+  {% if item.image %}
+    <img class="review-image" src="{% url 'items:image' item.id item.image_key %}" alt="{{ item.name }}">
+  {% endif %}
   <dl class="facts">
     <dt>类别</dt><dd>{{ item.category }}</dd><dt>描述</dt><dd class="pre">{{ item.description }}</dd>
     {% if item.flaws %}<dt>瑕疵</dt><dd class="pre">{{ item.flaws }}</dd>{% endif %}

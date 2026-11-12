@@ -12,13 +12,13 @@
     </div>
   </header>
   {% if can_publish %}
-    <form class="card" method="post" data-item-form>
+    <form class="card" method="post" enctype="multipart/form-data" data-item-form>
       {% csrf_token %}
       {{ form.non_field_errors }}
       <fieldset>
         <legend>物品信息</legend>
         {% for field in form %}
-          {% if field.name != 'contact' and field.name != 'location' %}
+          {% if field.name != 'contact' and field.name != 'location' and field.name != 'image' and field.name != 'remove_image' %}
             <div class="field"{% if field.name == 'price' %} data-amount-for="出售"{% elif field.name == 'deposit_display' %} data-amount-for="出借"{% endif %}>
               {{ field.label_tag }}{{ field }}
               {{ field.errors }}
@@ -26,6 +26,24 @@
             </div>
           {% endif %}
         {% endfor %}
+      </fieldset>
+      <fieldset>
+        <legend>物品图片（可选）</legend>
+        {% if editing and item.image %}
+          <div class="field">
+            <p>当前图片：</p>
+            <img class="form-image-preview" src="{% url 'items:image' item.id item.image_key %}" alt="当前物品图片">
+          </div>
+          <div class="field">
+            {{ form.remove_image.label_tag }}{{ form.remove_image }}
+            {{ form.remove_image.errors }}
+          </div>
+        {% endif %}
+        <div class="field">
+          {{ form.image.label_tag }}{{ form.image }}
+          {{ form.image.errors }}
+          {% if form.image.help_text %}<span id="{{ form.image.auto_id }}_helptext" class="helptext">{{ form.image.help_text }}</span>{% endif %}
+        </div>
       </fieldset>
       <fieldset>
         <legend>交付信息</legend>

@@ -43,15 +43,19 @@
           <a class="listing-link" href="{% url 'items:detail' item.id %}">
             <div class="listing-cover {% if item.flow_type == '赠送' %}gift{% elif item.flow_type == '出借' %}loan{% endif %}">
               <span class="badge">{{ item.get_flow_type_display }}</span>
-              <svg viewBox="0 0 64 64" aria-hidden="true">
-                {% if item.flow_type == '赠送' %}
-                  <path d="M12 27h40v25H12zM9 19h46v9H9zM32 19v33M32 19c-12 0-17-5-15-9 3-6 12-2 15 9Zm0 0c12 0 17-5 15-9-3-6-12-2-15 9Z"/>
-                {% elif item.flow_type == '出借' %}
-                  <path d="M49 26a18 18 0 0 0-31-8l-5 5m0-10v10h10m-8 15a18 18 0 0 0 31 8l5-5m0 10V41H41"/>
-                {% else %}
-                  <path d="M12 19 32 9l20 10v26L32 55 12 45V19Zm0 0 20 11 20-11M32 30v25M22 14l20 11"/>
-                {% endif %}
-              </svg>
+              {% if item.image %}
+                <img src="{% url 'items:image' item.id item.image_key %}" alt="{{ item.name }}" loading="lazy">
+              {% else %}
+                <svg viewBox="0 0 64 64" aria-hidden="true">
+                  {% if item.flow_type == '赠送' %}
+                    <path d="M12 27h40v25H12zM9 19h46v9H9zM32 19v33M32 19c-12 0-17-5-15-9 3-6 12-2 15 9Zm0 0c12 0 17-5 15-9-3-6-12-2-15 9Z"/>
+                  {% elif item.flow_type == '出借' %}
+                    <path d="M49 26a18 18 0 0 0-31-8l-5 5m0-10v10h10m-8 15a18 18 0 0 0 31 8l5-5m0 10V41H41"/>
+                  {% else %}
+                    <path d="M12 19 32 9l20 10v26L32 55 12 45V19Zm0 0 20 11 20-11M32 30v25M22 14l20 11"/>
+                  {% endif %}
+                </svg>
+              {% endif %}
               <span class="cover-category">{{ item.category }}</span>
             </div>
             <div class="listing-body">

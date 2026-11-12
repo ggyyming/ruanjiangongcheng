@@ -8,12 +8,24 @@
   其余修改后转待审核，通过前隐藏。
 - CP-D-11：退回/归还后不自动开放，由物主申请重新上架并重新审核。
 
-ponytail: 图片上传（图片字段与大小/类型限制）在 A1 阶段实现，M0 不建图片字段。
+图片：每件物品一张可选图片（本轮模块 A），存储键由服务端生成且不可复用，
+替换或移除后旧地址自然失效。历史版本留存为后续任务。
 """
+
+from pathlib import Path
+from uuid import uuid4
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+
+
+def item_image_path(instance, filename):
+    """生成物品图片存储键：每次上传独立 uuid，旧链接不会误指向新图。"""
+    ext = Path(filename).suffix.lower()
+    if ext not in (".jpg", ".jpeg", ".png"):
+        ext = ".jpg"
+    return f"items/{uuid4().hex}{ext}"
 
 
 class Item(models.Model):
@@ -58,6 +70,7 @@ class Item(models.Model):
     campus_area = models.CharField("校内大致区域", max_length=50)
     contact = models.CharField("联系方式（私密）", max_length=100, blank=True)
     location = models.CharField("具体交付地点（私密）", max_length=100, blank=True)
+    image = models.ImageField("物品图片", upload_to=item_image_path, null=True, blank=True)
     display_status = models.CharField(
         "展示状态", max_length=10, choices=DisplayStatus.choices, default=DisplayStatus.PENDING
     )
@@ -79,6 +92,13 @@ class Item(models.Model):
 
     def __str__(self):
         return f"{self.id} {self.name} {self.display_status}"
+
+    @property
+    def image_key(self):
+        """图片 URL 中的版本标识；无图或文件缺失时为空字符串。"""
+        if not self.image:
+            return ""
+        return Path(self.image.name).name
 
 
 class ItemAvailabilityChange(models.Model):

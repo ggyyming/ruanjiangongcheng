@@ -1,4 +1,5 @@
 """物品市场路由（A 包，路径 /items/）。"""
+
 from django.urls import path
 
 from . import views
@@ -14,4 +15,5 @@ urlpatterns = [
     path("<int:item_id>/edit/", views.item_edit, name="edit"),
     path("<int:item_id>/offline/", views.item_offline, name="offline"),
     path("<int:item_id>/relist/", views.item_relist, name="relist"),
+    path("<int:item_id>/image/<str:image_key>/", views.item_image, name="image"),
 ]

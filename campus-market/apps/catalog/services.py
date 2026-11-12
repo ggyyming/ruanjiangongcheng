@@ -77,27 +77,48 @@ def release_reservation(*, item_id: int, reason: str) -> None:
         change_availability(item_id=item_id, available=True, reason=reason)
 
 
-def create_item(*, owner, **fields) -> Item:
-    """发布物品（CP-R-07/08）：须已通过校内认证，创建后进入待审核。"""
+@transaction.atomic
+def create_item(*, owner, image=None, **fields) -> Item:
+    """发布物品（CP-R-07/08）：须已通过校内认证，创建后进入待审核。
+
+    图片经表单重新编码后按服务端生成的存储键写入；失败时不留下可访问的半完成记录。
+    """
     if not is_verified(user_id=owner.id):
         raise PermissionDenied("须通过校内身份审核后才能发布物品")
-    return Item.objects.create(owner=owner, display_status=Item.DisplayStatus.PENDING, **fields)
+    item = Item.objects.create(owner=owner, display_status=Item.DisplayStatus.PENDING, **fields)
+    if image is not None:
+        item.image.save(image.name, image, save=True)
+    return item
 
 
 @transaction.atomic
-def edit_item(*, owner, item_id: int, **fields) -> Item:
-    """仅物主可修改，修改后重新审核（CP-D-10）。"""
+def edit_item(*, owner, item_id: int, image=None, remove_image: bool = False, **fields) -> Item:
+    """仅物主可修改，修改后重新审核（CP-D-10）。
+
+    图片：未传文件且未勾选移除时保留原图；替换或移除均随编辑重新审核。
+    旧文件在数据库变更成功后才清理；同一存储键不被多个物品共享（每次上传独立 uuid）。
+    """
     item = Item.objects.select_for_update().filter(id=item_id).first()
     if item is None:
         raise ValidationError("物品不存在")
     if item.owner_id != owner.id:
         raise PermissionDenied("只能修改本人发布的物品")
     require_manageable_item(item)
+    old_name = item.image.name if item.image else None
     for key, value in fields.items():
         setattr(item, key, value)
+    if remove_image:
+        item.image = None
+    elif image is not None:
+        item.image.save(image.name, image, save=False)
     item.display_status = Item.DisplayStatus.PENDING
     item.review_reason = ""
     item.save()
+    if old_name and item.image.name != old_name:
+        try:
+            item.image.storage.delete(old_name)
+        except FileNotFoundError:
+            pass
     return item
 
 
