@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}我的申请{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>我的申请</h1><p class="muted">查看你提交的购买、领取和借用申请。</p></div><a class="button secondary" href="{% url 'items:list' %}">浏览物品</a></header>
+{% if applications %}
+  <ul class="record-list">
+    {% for application in applications %}
+      <li>
+        <div><strong>{{ application.item.name }}</strong><small>{{ application.get_kind_display }} · {{ application.created_at|date:"Y-m-d H:i" }}</small>{% if application.close_reason %}<small>{{ application.close_reason }}</small>{% endif %}</div>
+        <div class="actions">
+          <span class="badge{% if application.status == 'pending' %} warn{% elif application.status != 'selected' %} neutral{% endif %}">{{ application.get_status_display }}</span>
+          {% if application.transfer %}<a class="button secondary compact" href="{% url 'transfers:transfer_detail' application.transfer.pk %}">查看流转</a>{% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty-state"><div class="empty-icon" aria-hidden="true">◇</div><h2>还没有提交申请</h2><p>在物品市场找到合适的物品后，可以从详情页提交申请。</p><a class="button" href="{% url 'items:list' %}">去物品市场</a></div>
+{% endif %}
+{% endblock %}

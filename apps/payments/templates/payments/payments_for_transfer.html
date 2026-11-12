@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}模拟资金明细{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'transfers:transfer_detail' transfer.id %}">← 流转详情</a>
+<header class="page-header">
+  <div><h1>资金明细</h1><p class="muted">{{ transfer.item.name }} · {{ transfer.get_kind_display }}</p></div>
+  <span class="badge neutral">模拟资金</span>
+</header>
+<p class="notice">本页面的付款、结算和退款均为模拟，不会发生实际扣款。</p>
+{% if transfer.kind != 'donation' %}
+  <section class="card">
+    <h2>{% if transfer.kind == 'borrow' %}借用押金{% else %}购买货款{% endif %}</h2>
+    {% if transfer.kind == 'borrow' and awaiting_terms and transfer.status == 'reserved' and not payment and not past_deadline and transfer.revoke_status == 'none' %}
+      <p class="muted">请先与对方确认归还时间和押金金额。</p>
+      {% if agreement %}<a class="button secondary" href="{% url 'loans:detail' agreement.pk %}">查看借用约定</a>{% endif %}
+    {% else %}
+      <p class="price-line">¥{% if payment %}{{ payment.amount }}{% elif agreement %}{{ agreement.deposit_amount }}{% else %}{{ transfer.amount }}{% endif %}</p>
+      {% if can_pay %}
+        <p class="hint">付款截止时间：{{ deadline|date:"Y-m-d H:i" }}。</p>
+        <form method="post" action="{% url 'payments:pay' transfer.id %}">{% csrf_token %}<button type="submit">{% if payment.status == 'pay_failed' %}重新发起模拟付款{% else %}发起模拟付款{% endif %}</button></form>
+      {% elif payment.status == 'paying' or payment.status == 'unknown' %}
+        <p class="muted">正在等待付款结果，请稍后查看。</p>
+      {% elif payment.status == 'paid' %}
+        <p><span class="badge">模拟付款成功</span></p>
+      {% elif transfer.revoke_status == 'negotiating' %}
+        <p class="muted">撤销协商期间暂不能付款。</p>
+      {% elif past_deadline and transfer.status == 'reserved' %}
+        <p class="muted">付款期限已结束。请查看流转状态。</p>
+      {% elif transfer.status == 'reserved' %}
+        <p class="muted">等待获选方付款，截止时间为 {{ deadline|date:"Y-m-d H:i" }}。</p>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endif %}
+<section>
+  <h2>资金流水</h2>
+  {% if payments %}
+    <ul class="record-list">
+      {% for operation in payments %}
+        <li><div><strong>{{ operation.get_kind_display }} · {{ operation.get_purpose_display }}</strong><small>流水号 {{ operation.pk }} · {{ operation.updated_at|date:"Y-m-d H:i" }}</small></div><div class="actions"><strong>¥{{ operation.amount }}</strong><span class="badge neutral">{{ operation.get_status_display }}</span></div></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state"><h3>{% if transfer.kind == 'donation' %}赠送无需付款{% else %}暂无资金流水{% endif %}</h3></div>
+  {% endif %}
+</section>
+{% endblock %}

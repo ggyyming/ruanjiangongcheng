@@ -1,0 +1,22 @@
+{% extends "loans/base.html" %}
+{% block title %}争议处理{% endblock %}
+{% block content %}
+<header class="page-header"><div><p class="eyebrow"><span></span> 管理工作台</p><h1>争议处理</h1><p class="muted">认领后可查看详细材料和双方处理进度。</p></div></header>
+{% if disputes %}
+  <ul class="record-list">
+    {% for dispute in disputes %}
+      <li>
+        <div><strong>{% if dispute.assigned_admin_id %}{{ dispute.agreement.item_title }}{% else %}争议 #{{ dispute.pk }}{% endif %}</strong><small>{{ dispute.get_kind_display }} · {{ dispute.created_at|date:"Y-m-d H:i" }}</small></div>
+        <div class="actions">
+          <span class="badge{% if dispute.status == 'open' %} warn{% endif %}">{{ dispute.get_status_display }}</span>
+          {% if not dispute.assigned_admin_id and dispute.status == 'open' %}
+            <form method="post" action="{% url 'loans:claim_dispute' dispute.pk %}">{% csrf_token %}<button type="submit" class="secondary compact">认领争议</button></form>
+          {% elif dispute.assigned_admin_id %}
+            <a class="button secondary compact" href="{% url 'loans:admin_dispute_detail' dispute.pk %}">查看详情</a>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}<div class="empty-state"><h2>暂无待处理争议</h2><p>待认领和由你负责的争议会显示在这里。</p></div>{% endif %}
+{% endblock %}

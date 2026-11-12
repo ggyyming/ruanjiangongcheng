@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}请重新打开页面{% endblock %}
+{% block content %}
+<section class="empty-state form-shell">
+  <div class="empty-icon" aria-hidden="true">!</div>
+  <h1>这次操作没有提交</h1>
+  <p>页面可能已过期，或你在另一个标签页切换了账号。请确认当前登录账号，再重新打开页面提交。</p>
+  <div class="actions centered"><a class="button" href="{% url 'accounts:home' %}">查看当前账号</a><a class="button secondary" href="{% url 'items:list' %}">返回物品市场</a></div>
+</section>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}流转记录{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <p class="eyebrow"><span></span> 管理工作台</p>
+    <h1>流转记录</h1>
+    <p class="muted">查看买卖、赠送和借用的流转进度，共 {{ page_obj.paginator.count }} 条记录。</p>
+  </div>
+  <form class="market-search" method="get" role="search">
+    <label class="sr-only" for="transfer-search">搜索流转物品</label>
+    <input type="search" id="transfer-search" name="q" value="{{ q }}" maxlength="100" placeholder="搜索物品名称">
+    <button class="secondary" type="submit">搜索</button>
+  </form>
+</header>
+{% if page_obj.object_list %}
+  <ul class="record-list">
+    {% for transfer in page_obj %}
+      <li>
+        <div>
+          <a href="{% url 'transfers:admin_transfer_detail' transfer.pk %}">{{ transfer.item.name }}</a>
+          <small>流转编号 {{ transfer.pk }} · {{ transfer.get_kind_display }} · {{ transfer.reserved_at|date:"Y-m-d H:i" }}</small>
+          <small>{{ transfer.owner.username }} → {{ transfer.recipient.username }}</small>
+        </div>
+        {% if transfer.revoke_status == 'negotiating' %}
+          <span class="badge warn">撤销协商中</span>
+        {% else %}
+          <span class="badge">{{ transfer.get_status_display }}</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% include "includes/pagination.html" %}
+{% elif q %}
+  <div class="empty-state">
+    <h2>没有找到相关流转</h2>
+    <p>可以换个物品名称再搜索。</p>
+    <a class="button secondary" href="{% url 'transfers:admin_transfer_list' %}">查看全部记录</a>
+  </div>
+{% else %}
+  <div class="empty-state"><h2>暂无流转记录</h2><p>物品被预留后，相关进度会显示在这里。</p></div>
+{% endif %}
+{% endblock %}

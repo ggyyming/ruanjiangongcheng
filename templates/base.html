@@ -1,39 +1,73 @@
-<!DOCTYPE html>
-<html lang="zh-hans">
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}校园物品流转平台{% endblock %}</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 0; color: #222; }
-    nav { background: #2f6f4f; color: #fff; padding: 0.75rem 1rem; display: flex; gap: 1rem; align-items: center; }
-    nav a { color: #fff; text-decoration: none; }
-    nav a:hover { text-decoration: underline; }
-    main { padding: 1rem; max-width: 960px; margin: 0 auto; }
-    .messages li { color: #a33; }
-  </style>
+  <title>{% block title %}校园物品流转平台{% endblock %} | 校园流转</title>
+  <link rel="stylesheet" href="{% static 'market/site.css' %}">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <nav>
-    <a href="/">物品市场</a>
-    {% if user.is_authenticated %}
-      <a href="/accounts/">我的账户</a>
-      <form method="post" action="/accounts/logout/" style="margin:0">
-        {% csrf_token %}
-        <button type="submit" style="background:none;border:none;color:#fff;cursor:pointer">退出</button>
-      </form>
-    {% else %}
-      <a href="/accounts/login/">登录</a>
-      <a href="/accounts/register/">注册</a>
-    {% endif %}
-  </nav>
-  <main>
+  <a class="skip-link" href="#main-content">跳到正文</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="{% url 'items:list' %}">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9h14l-4-4M20 15H6l4 4"/></svg></span>
+        <span>校园流转</span>
+      </a>
+      {% with route=request.resolver_match.view_name namespace=request.resolver_match.namespace %}
+      <nav class="primary-nav" aria-label="主导航">
+        <a href="{% url 'items:list' %}"{% if namespace == 'items' and 'review' not in route %} aria-current="page"{% endif %}>物品市场</a>
+        {% if user.is_authenticated %}
+          {% if user.is_staff %}
+            <a href="{% url 'accounts:review_list' %}"{% if namespace == 'accounts' and 'review' in route %} aria-current="page"{% endif %}>身份审核</a>
+            <a href="{% url 'items:review_list' %}"{% if namespace == 'items' and 'review' in route %} aria-current="page"{% endif %}>物品审核</a>
+            <a href="{% url 'transfers:admin_transfer_list' %}"{% if namespace == 'transfers' and 'admin_transfer' in route %} aria-current="page"{% endif %}>流转记录</a>
+            <a href="{% url 'loans:admin_dispute_list' %}"{% if 'admin_dispute' in route %} aria-current="page"{% endif %}>争议处理</a>
+            <a href="{% url 'market_data:index' %}">数据查询</a>
+          {% else %}
+            <a href="{% url 'transfers:my_applications' %}"{% if route == 'transfers:my_applications' %} aria-current="page"{% endif %}>我的申请</a>
+            <a href="{% url 'transfers:my_transfers' %}"{% if namespace == 'payments' or namespace == 'transfers' and route != 'transfers:my_applications' %} aria-current="page"{% endif %}>我的流转</a>
+            <a href="{% url 'loans:list' %}"{% if namespace == 'loans' and route != 'loans:notifications' %} aria-current="page"{% endif %}>我的借用</a>
+          {% endif %}
+        {% endif %}
+      </nav>
+      <div class="header-tools">
+        {% if user.is_authenticated %}
+          <a class="header-inbox" href="{% url 'loans:notifications' %}" aria-label="站内通知" title="站内通知"{% if route == 'loans:notifications' %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14l2 10v4H3v-4l2-10Zm-2 10h6l1.5 2h3l1.5-2h6"/></svg>
+          </a>
+          <a class="account-link" href="{% url 'accounts:home' %}" aria-label="我的账户，当前登录 {{ user.username }}" title="当前登录：{{ user.username }}">
+            <span class="avatar" aria-hidden="true">{{ user.username|first|upper }}</span><span class="account-name">{{ user.username }}</span>
+          </a>
+          <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}<button class="text-button" type="submit">退出</button>
+          </form>
+        {% else %}
+          <a class="button secondary compact" href="{% url 'accounts:login' %}">登录</a>
+          <a class="button compact" href="{% url 'accounts:register' %}">注册</a>
+        {% endif %}
+      </div>
+      {% endwith %}
+    </div>
+  </header>
+  <main class="shell main-content" id="main-content" tabindex="-1">
     {% if messages %}
-      <ul class="messages">
-        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+      <ul class="messages" aria-label="操作结果">
+        {% for message in messages %}
+          <li class="flash {{ message.level_tag }}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">{{ message }}</li>
+        {% endfor %}
       </ul>
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <span class="footer-brand">校园流转</span>
+      <span>校内买卖、赠送与借用</span>
+      <a href="{% url 'items:list' %}">返回物品市场 <span aria-hidden="true">↗</span></a>
+    </div>
+  </footer>
 </body>
 </html>

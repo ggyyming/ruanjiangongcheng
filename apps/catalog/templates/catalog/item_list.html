@@ -1,20 +1,89 @@
 {% extends "base.html" %}
 {% block title %}物品市场{% endblock %}
 {% block content %}
-<h2>物品市场</h2>
-{% if user.is_authenticated %}
-  <p><a href="{% url 'items:create' %}">发布物品</a></p>
-{% endif %}
-<ul>
-  {% for item in items %}
-    <li>
-      <a href="{% url 'items:detail' item.id %}">{{ item.name }}</a>
-      —— {{ item.get_flow_type_display }}{% if item.price %}，¥{{ item.price }}{% endif %}
-      {% if item.deposit_display %}，押金 ¥{{ item.deposit_display }}{% endif %}
-      （{{ item.owner_nickname }}，{{ item.campus_area }}）
-    </li>
-  {% empty %}
-    <li>暂无在售物品</li>
-  {% endfor %}
-</ul>
+<section class="market-hero" aria-labelledby="market-title">
+  <div class="hero-copy">
+    <p class="eyebrow"><span></span> 校园物品市场</p>
+    <h1 id="market-title">好物在校园<br>找到下一站</h1>
+    <p>在校内买卖、赠送和借用物品。让闲置好物继续派上用场。</p>
+    <div class="actions">
+      <a class="button" href="#market-list">浏览物品 <span aria-hidden="true">↓</span></a>
+      {% if can_publish %}
+        <a class="button secondary" href="{% url 'items:create' %}">发布物品</a>
+      {% elif not user.is_authenticated %}
+        <a class="button secondary" href="{% url 'accounts:login' %}?next={% url 'items:create' %}">发布物品</a>
+      {% elif not user.is_staff %}
+        <a class="button secondary" href="{% url 'accounts:home' %}">查看认证状态</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="hero-art" aria-hidden="true"></div>
+</section>
+<section id="market-list" class="market-section" aria-labelledby="listing-title">
+  <header class="section-header">
+    <div><h2 id="listing-title">浏览物品</h2><p class="muted">共 {{ page_obj.paginator.count }} 件可申请物品</p></div>
+    <form class="market-search" action="{% url 'items:list' %}#market-list" method="get" role="search">
+      <label class="sr-only" for="market-q">搜索物品</label>
+      <input type="search" id="market-q" name="q" value="{{ q }}" maxlength="100" placeholder="搜索名称、分类或校区">
+      {% if flow %}<input type="hidden" name="flow" value="{{ flow }}">{% endif %}
+      <button type="submit" class="secondary">搜索</button>
+    </form>
+  </header>
+  <nav class="filters" aria-label="流转方式">
+    <a class="filter" href="{% querystring flow=None page=None %}#market-list"{% if not flow %} aria-current="true"{% endif %}>全部</a>
+    {% for value, label in flows %}
+      <a class="filter" href="{% querystring flow=value page=None %}#market-list"{% if flow == value %} aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+    {% if q or flow %}<a class="clear-filter" href="{% url 'items:list' %}#market-list">清除筛选</a>{% endif %}
+  </nav>
+  {% if page_obj.object_list %}
+    <ul class="market-grid">
+      {% for item in page_obj %}
+        <li class="listing-card">
+          <a class="listing-link" href="{% url 'items:detail' item.id %}">
+            <div class="listing-cover {% if item.flow_type == '赠送' %}gift{% elif item.flow_type == '出借' %}loan{% endif %}">
+              <span class="badge">{{ item.get_flow_type_display }}</span>
+              <svg viewBox="0 0 64 64" aria-hidden="true">
+                {% if item.flow_type == '赠送' %}
+                  <path d="M12 27h40v25H12zM9 19h46v9H9zM32 19v33M32 19c-12 0-17-5-15-9 3-6 12-2 15 9Zm0 0c12 0 17-5 15-9-3-6-12-2-15 9Z"/>
+                {% elif item.flow_type == '出借' %}
+                  <path d="M49 26a18 18 0 0 0-31-8l-5 5m0-10v10h10m-8 15a18 18 0 0 0 31 8l5-5m0 10V41H41"/>
+                {% else %}
+                  <path d="M12 19 32 9l20 10v26L32 55 12 45V19Zm0 0 20 11 20-11M32 30v25M22 14l20 11"/>
+                {% endif %}
+              </svg>
+              <span class="cover-category">{{ item.category }}</span>
+            </div>
+            <div class="listing-body">
+              <h3>{{ item.name }}</h3>
+              <p class="listing-meta">{{ item.campus_area }} <span aria-hidden="true">·</span> {{ item.owner_nickname }}</p>
+              <div class="listing-bottom">
+                <strong>
+                  {% if item.flow_type == '出售' %}{% if item.price is not None %}¥{{ item.price }}{% else %}价格待确认{% endif %}
+                  {% elif item.flow_type == '出借' %}{% if item.deposit_display is not None %}<small>参考押金</small> ¥{{ item.deposit_display }}{% else %}押金待约定{% endif %}
+                  {% else %}免费赠送{% endif %}
+                </strong>
+                <span class="listing-arrow" aria-hidden="true">↗</span>
+              </div>
+            </div>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    {% include "includes/pagination.html" %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">◇</div>
+      {% if q or flow %}
+        <h3>没有找到符合条件的物品</h3>
+        <p>换个关键词，或清除筛选查看其他物品。</p>
+        <a class="button secondary" href="{% url 'items:list' %}#market-list">查看全部物品</a>
+      {% else %}
+        <h3>市场暂时没有可申请的物品</h3>
+        <p>通过审核的出售、赠送和出借物品会出现在这里。</p>
+        {% if can_publish %}<a class="button secondary" href="{% url 'items:create' %}">发布物品</a>{% endif %}
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
 {% endblock %}

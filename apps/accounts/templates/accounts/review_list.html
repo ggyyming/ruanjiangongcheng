@@ -1,15 +1,37 @@
 {% extends "base.html" %}
 {% block title %}身份审核{% endblock %}
 {% block content %}
-<h2>待审核身份申请</h2>
-<ul>
-  {% for app in applications %}
-    <li>
-      <a href="{% url 'accounts:review' app.id %}">{{ app.name }}（{{ app.staff_no }}，{{ app.department }}）</a>
-      提交于 {{ app.created_at|date:"Y-m-d H:i" }}
-    </li>
-  {% empty %}
-    <li>暂无待审核申请</li>
-  {% endfor %}
-</ul>
+<header class="page-header"><div><p class="eyebrow"><span></span> 管理工作台</p><h1>身份审核</h1><p class="muted">认领后即可查看申请资料并记录审核结果。</p></div></header>
+<section>
+  <h2>待审核申请</h2>
+  {% if applications %}
+    <ul class="record-list">
+      {% for app in applications %}
+        <li>
+          <div><strong>申请 #{{ app.pk }}</strong><small>{{ app.created_at|date:"Y-m-d H:i" }}</small></div>
+          {% if app.reviewed_by_id %}
+            <a class="button secondary compact" href="{% url 'accounts:review' app.id %}">继续审核</a>
+          {% else %}
+            <form method="post" action="{% url 'accounts:claim_review' app.id %}">
+              {% csrf_token %}<button type="submit" class="secondary compact">认领申请</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}<div class="empty-state"><h3>暂无待审核申请</h3><p>新提交的身份申请会显示在这里。</p></div>{% endif %}
+</section>
+<section class="market-section">
+  <h2>我已通过的身份审核</h2>
+  {% if approved %}
+    <ul class="record-list">
+      {% for app in approved %}
+        <li>
+          <div><a href="{% url 'accounts:identity_detail' app.id %}">{{ app.user.username }}</a><small>申请 #{{ app.pk }}</small></div>
+          <a class="button secondary compact" href="{% url 'accounts:revoke' app.user_id %}">撤销认证</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}<p class="muted">暂无已通过记录。</p>{% endif %}
+</section>
 {% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}找不到页面{% endblock %}
+{% block content %}
+<section class="empty-state form-shell">
+  <div class="empty-icon" aria-hidden="true">?</div>
+  <h1>找不到这个页面</h1>
+  <p>页面可能已移动，或物品已下架。</p>
+  <a class="button" href="{% url 'items:list' %}">返回物品市场</a>
+</section>
+{% endblock %}

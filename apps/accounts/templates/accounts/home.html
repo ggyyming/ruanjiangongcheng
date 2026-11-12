@@ -1,52 +1,81 @@
 {% extends "base.html" %}
 {% block title %}我的账户{% endblock %}
 {% block content %}
-<h2>我的账户</h2>
-{% if is_staff %}
-  <p><strong>管理员账号</strong>，负责审核校内身份与物品内容，无需校内认证，也不参与买卖。</p>
+<header class="page-header">
+  <div>
+    <p class="eyebrow"><span></span> {% if user.is_staff %}管理工作台{% else %}账户中心{% endif %}</p>
+    <h1>我的账户</h1>
+    <p class="muted">当前账号：{{ user.username }}</p>
+  </div>
+  {% if verified and not user.is_staff %}<a class="button" href="{% url 'items:create' %}">发布物品</a>{% endif %}
+</header>
+{% if user.is_staff %}
+  <section class="card">
+    <h2>审核与处理</h2>
+    <p class="muted">查看待审核申请、物品流转记录和借用争议。</p>
+    <div class="actions">
+      <a class="button" href="{% url 'accounts:review_list' %}">身份审核</a>
+      <a class="button secondary" href="{% url 'items:review_list' %}">物品审核</a>
+      <a class="button secondary" href="{% url 'transfers:admin_transfer_list' %}">流转记录</a>
+      <a class="button secondary" href="{% url 'loans:admin_dispute_list' %}">争议处理</a>
+      <a class="button secondary" href="{% url 'market_data:index' %}">数据查询</a>
+    </div>
+  </section>
 {% else %}
-  <p>
-    校内认证状态：
-    {% if verified %}<strong>已通过</strong>
-    {% else %}<strong>未通过</strong>（发布物品和申请流转须先通过认证）
-    {% endif %}
-  </p>
-  {% if not verified %}
-    <p><a href="{% url 'accounts:identity_apply' %}">提交/修改校内身份申请</a></p>
-  {% endif %}
-{% endif %}
-
-{% if not is_staff %}
-<h3>身份申请记录（CP-D-02：历次结果保留）</h3>
-<ul>
-  {% for app in applications %}
-    <li>
-      <a href="{% url 'accounts:identity_detail' app.id %}">{{ app.created_at|date:"Y-m-d H:i" }}</a>
-      {{ app.status }}{% if app.review_reason %}：{{ app.review_reason }}{% endif %}
-    </li>
-  {% empty %}
-    <li>暂无申请记录</li>
-  {% endfor %}
-</ul>
-{% endif %}
-
-{% if is_staff %}
-<h3>审核入口</h3>
-<ul>
-  <li><a href="{% url 'accounts:review_list' %}">身份审核（待审核申请）</a></li>
-  <li><a href="{% url 'items:review_list' %}">物品审核（待审核物品）</a></li>
-</ul>
-{% else %}
-<h3>我发布的物品</h3>
-<ul>
-  {% for item in items %}
-    <li>
-      <a href="{% url 'items:detail' item.id %}">{{ item.name }}</a>
-      （{{ item.flow_type }}，{{ item.get_display_status_display }}）
-    </li>
-  {% empty %}
-    <li><a href="{% url 'items:create' %}">发布第一件物品</a></li>
-  {% endfor %}
-</ul>
+  <div class="split">
+    <section aria-labelledby="my-items-title">
+      <header class="section-header"><h2 id="my-items-title">我发布的物品</h2></header>
+      {% if items %}
+        <ul class="record-list">
+          {% for item in items %}
+            <li>
+              <div><a href="{% url 'items:detail' item.id %}">{{ item.name }}</a><small>{{ item.get_flow_type_display }} · {{ item.updated_at|date:"Y-m-d H:i" }}</small></div>
+              <span class="badge{% if item.display_status != '可申请' %} neutral{% endif %}">
+                {% if item.flow_status == 'reserved' %}已预留{% elif item.flow_status == 'borrowed' %}借用中{% elif item.flow_status == 'completed' %}已售出{% elif item.flow_status == 'donation_completed' %}已赠送{% elif item.compensated %}赔偿已结清{% else %}{{ item.get_display_status_display }}{% endif %}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon" aria-hidden="true">◇</div>
+          <h3>还没有发布物品</h3>
+          <p>{% if verified %}可以发布想出售、赠送或出借的物品。{% else %}通过校内身份审核后即可发布物品。{% endif %}</p>
+        </div>
+      {% endif %}
+    </section>
+    <aside aria-label="身份认证">
+      <section class="card status-panel">
+        <h2>校内身份认证</h2>
+        {% if verified %}
+          <p><span class="badge">已通过</span></p>
+          <p class="muted">可以发布物品和提交流转申请。</p>
+        {% elif latest.status == '待审核' %}
+          <p><span class="badge warn">待审核</span></p>
+          <p class="muted">申请已提交，审核结果会通过站内通知送达。</p>
+          <a class="button secondary" href="{% url 'accounts:identity_detail' latest.id %}">查看申请</a>
+        {% else %}
+          <p><span class="badge neutral">{{ latest.get_status_display|default:"未认证" }}</span></p>
+          <p class="muted">通过校内身份审核后，即可发布或申请物品。</p>
+          <a class="button" href="{% url 'accounts:identity_apply' %}">{% if latest %}重新申请认证{% else %}申请校内认证{% endif %}</a>
+        {% endif %}
+      </section>
+      <section aria-labelledby="identity-history-title">
+        <h2 id="identity-history-title">身份申请记录</h2>
+        {% if applications %}
+          <ul class="record-list">
+            {% for app in applications %}
+              <li>
+                <div><a href="{% url 'accounts:identity_detail' app.id %}">{{ app.created_at|date:"Y-m-d H:i" }}</a>{% if app.review_reason %}<small>{{ app.review_reason }}</small>{% endif %}</div>
+                <span class="badge neutral">{{ app.get_status_display }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">暂无申请记录。</p>
+        {% endif %}
+      </section>
+    </aside>
+  </div>
 {% endif %}
 {% endblock %}

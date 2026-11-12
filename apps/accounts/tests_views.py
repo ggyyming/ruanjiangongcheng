@@ -1,4 +1,5 @@
 """认证流程页面测试（CP-R-05/06/07、CP-D-01/02/22、CP-D-04）。"""
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -42,6 +43,19 @@ class RegisterLoginTest(TestCase):
 
 
 class IdentityFlowTest(TestCase):
+    def test_pending_application_cannot_be_submitted_again(self):
+        user = make_user()
+        self.client.force_login(user)
+        url = reverse("accounts:identity_apply")
+        fields = {"name": "演示用户", "staff_no": "DEMO-01", "department": "演示院系"}
+        self.client.post(url, fields)
+        application = IdentityApplication.objects.get(user=user)
+        self.assertRedirects(
+            self.client.post(url, fields),
+            reverse("accounts:identity_detail", args=[application.pk]),
+        )
+        self.assertEqual(IdentityApplication.objects.filter(user=user).count(), 1)
+
     def test_unverified_user_cannot_create_item_page(self):
         """CP-R-07：未认证不可发布，拒绝时不新增业务记录。"""
         user = make_user()
@@ -74,6 +88,7 @@ class IdentityFlowTest(TestCase):
 
         admin = make_user(username="admin", staff=True)
         self.client.force_login(admin)
+        self.client.post(reverse("accounts:claim_review", args=[app.id]))
         resp = self.client.post(
             reverse("accounts:review", args=[app.id]), {"reason": "院系信息有误"}
         )
@@ -93,6 +108,7 @@ class IdentityFlowTest(TestCase):
 
         new_app = IdentityApplication.objects.filter(user=user).first()
         self.client.force_login(admin)
+        self.client.post(reverse("accounts:claim_review", args=[new_app.id]))
         self.client.post(reverse("accounts:review", args=[new_app.id]), {"approve": "on"})
         self.assertTrue(is_verified(user_id=user.id))
 
@@ -103,6 +119,7 @@ class IdentityFlowTest(TestCase):
         )
         admin = make_user(username="admin", staff=True)
         self.client.force_login(admin)
+        self.client.post(reverse("accounts:claim_review", args=[app.id]))
         resp = self.client.post(reverse("accounts:review", args=[app.id]), {})
         app.refresh_from_db()
         self.assertEqual(app.status, IdentityApplication.Status.PENDING)
@@ -119,16 +136,21 @@ class IdentityFlowTest(TestCase):
         resp = self.client.get(reverse("accounts:identity_detail", args=[app.id]))
         self.assertEqual(resp.status_code, 403)
 
-    def test_staff_can_view_identity_detail(self):
+    def test_only_assigned_staff_can_view_identity_detail(self):
         user = make_user()
         app = IdentityApplication.objects.create(
             user=user, name="张三", staff_no="20240001", department="计算机学院"
         )
         admin = make_user(username="admin", staff=True)
         self.client.force_login(admin)
+        url = reverse("accounts:identity_detail", args=[app.id])
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.post(reverse("accounts:claim_review", args=[app.id]))
         resp = self.client.get(reverse("accounts:identity_detail", args=[app.id]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "20240001")
+        self.client.force_login(make_user(username="other-admin", staff=True))
+        self.assertEqual(self.client.get(url).status_code, 403)
 
 
 class RevokeTest(TestCase):

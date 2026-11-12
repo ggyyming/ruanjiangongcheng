@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}无法访问{% endblock %}
+{% block content %}
+<section class="empty-state form-shell">
+  <div class="empty-icon" aria-hidden="true">!</div>
+  <h1>当前账号无法访问</h1>
+  <p>{{ exception|default:"请确认你已登录正确的账号。" }}</p>
+  <a class="button" href="{% url 'items:list' %}">返回物品市场</a>
+</section>
+{% endblock %}

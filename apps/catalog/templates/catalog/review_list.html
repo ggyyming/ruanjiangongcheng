@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 {% block title %}物品审核{% endblock %}
 {% block content %}
-<h2>待审核物品</h2>
-<ul>
-  {% for item in items %}
-    <li>
-      <a href="{% url 'items:review' item.id %}">{{ item.name }}</a>
-      —— {{ item.get_flow_type_display }}，物主 {{ item.owner_nickname }}
-    </li>
-  {% empty %}
-    <li>暂无待审核物品</li>
-  {% endfor %}
-</ul>
+<header class="page-header"><div><p class="eyebrow"><span></span> 管理工作台</p><h1>物品审核</h1><p class="muted">审核通过的物品会在市场公开。</p></div></header>
+{% if items %}
+  <ul class="record-list">
+    {% for item in items %}
+      <li><div><strong>{{ item.name }}</strong><small>{{ item.get_flow_type_display }} · 物主 {{ item.owner_nickname }}</small></div><a class="button secondary compact" href="{% url 'items:review' item.id %}">查看并审核</a></li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty-state"><h2>暂无待审核物品</h2><p>新发布和申请重新上架的物品会出现在这里。</p></div>
+{% endif %}
 {% endblock %}

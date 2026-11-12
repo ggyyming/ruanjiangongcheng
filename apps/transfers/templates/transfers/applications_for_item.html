@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}物品申请{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'items:detail' item.id %}">← 物品详情</a>
+<header class="page-header"><div><h1>物品申请</h1><p class="muted">{{ item.name }}</p></div></header>
+{% if applications %}
+  {% if can_reserve %}<p class="notice">选定一位申请人后，物品会为其预留，其他待处理申请将关闭。</p>{% endif %}
+  <ul class="record-list">
+    {% for application in applications %}
+      <li>
+        <div><strong>{{ application.applicant.username }}</strong><small>{{ application.get_kind_display }} · {{ application.created_at|date:"Y-m-d H:i" }}</small></div>
+        <div class="actions">
+          <span class="badge neutral">{{ application.get_status_display }}</span>
+          {% if application.status == 'pending' and can_reserve %}
+            <form method="post" action="{% url 'transfers:reserve' application.id %}">{% csrf_token %}<button type="submit" class="compact">选定并预留</button></form>
+          {% elif application.transfer %}
+            <a class="button secondary compact" href="{% url 'transfers:transfer_detail' application.transfer.pk %}">查看流转</a>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}<div class="empty-state"><h2>还没有人申请</h2><p>有同学提交申请后，你可以在这里查看并选择。</p></div>{% endif %}
+{% endblock %}

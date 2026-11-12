@@ -1,11 +1,46 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{% if editing %}修改物品{% else %}发布物品{% endif %}{% endblock %}
+{% block extra_head %}<script defer src="{% static 'market/item-form.js' %}"></script>{% endblock %}
 {% block content %}
-<h2>{% if editing %}修改物品（保存后重新进入待审核）{% else %}发布物品{% endif %}</h2>
-<p>规则：出售须填价格；出借须填押金展示；赠送不填价格与押金。联系方式与具体地点仅预留后对交易双方可见。</p>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">提交</button>
-</form>
+<div class="form-shell">
+  <a class="back-link" href="{% if editing %}{% url 'items:detail' item.id %}{% else %}{% url 'accounts:home' %}{% endif %}">← {% if editing %}物品详情{% else %}我的账户{% endif %}</a>
+  <header class="page-header">
+    <div>
+      <h1>{% if editing %}修改物品{% else %}发布物品{% endif %}</h1>
+      <p class="muted">{% if editing %}修改后需重新审核，审核通过后物品会再次公开。{% else %}填写物品信息并提交审核。通过后，其他同学可以看到并申请。{% endif %}</p>
+    </div>
+  </header>
+  {% if can_publish %}
+    <form class="card" method="post" data-item-form>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <fieldset>
+        <legend>物品信息</legend>
+        {% for field in form %}
+          {% if field.name != 'contact' and field.name != 'location' %}
+            <div class="field"{% if field.name == 'price' %} data-amount-for="出售"{% elif field.name == 'deposit_display' %} data-amount-for="出借"{% endif %}>
+              {{ field.label_tag }}{{ field }}
+              {{ field.errors }}
+              {% if field.help_text %}<span id="{{ field.auto_id }}_helptext" class="helptext">{{ field.help_text }}</span>{% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </fieldset>
+      <fieldset>
+        <legend>交付信息</legend>
+        <p class="hint">联系方式和具体地点只在预留后对物主和获选方显示。</p>
+        <div class="field">{{ form.contact.label_tag }}{{ form.contact }}{{ form.contact.errors }}</div>
+        <div class="field">{{ form.location.label_tag }}{{ form.location }}{{ form.location.errors }}</div>
+      </fieldset>
+      <button type="submit">{% if editing %}保存并重新提交{% else %}提交审核{% endif %}</button>
+    </form>
+  {% else %}
+    <section class="notice">
+      <h2>完成校内身份认证后即可发布物品</h2>
+      <p>你可以在账户中心提交申请或查看审核进度。</p>
+      <div class="actions"><a class="button" href="{% url 'accounts:home' %}">查看认证状态</a><a class="button secondary" href="{% url 'items:list' %}">返回物品市场</a></div>
+    </section>
+  {% endif %}
+</div>
 {% endblock %}

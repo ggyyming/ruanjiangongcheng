@@ -1,0 +1,17 @@
+{% extends "loans/base.html" %}
+{% block title %}我的借用{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>我的借用</h1><p class="muted">查看借用约定、归还时间和延期进度。</p></div></header>
+{% if agreements %}
+  <ul class="record-list">
+    {% for agreement in agreements %}
+      <li>
+        <div><a href="{% url 'loans:detail' agreement.pk %}">{{ agreement.item_title }}</a><small>{% if user.id == agreement.owner_id %}我是物主{% else %}我是借用者{% endif %} · {% if agreement.due_at %}约定归还 {{ agreement.due_at|date:"Y-m-d H:i" }}{% else %}尚未约定归还时间{% endif %}</small></div>
+        <div class="actions"><span class="badge">{{ agreement.get_status_display }}</span>{% if agreement.overdue_marked_at %}<span class="badge warn">{% if agreement.is_ended %}曾逾期{% else %}有逾期记录{% endif %}</span>{% endif %}</div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty-state"><div class="empty-icon" aria-hidden="true">↔</div><h2>还没有借用记录</h2><p>借用申请获选后，你可以在这里与对方确认归还时间和押金。</p><a class="button secondary" href="{% url 'items:list' %}?flow=出借#market-list">浏览出借物品</a></div>
+{% endif %}
+{% endblock %}

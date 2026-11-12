@@ -19,12 +19,17 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 
+from config.data_admin import data_site
 from config.views import health
 
 urlpatterns = [
     path("", RedirectView.as_view(pattern_name="items:list"), name="home"),
     path("health/", health, name="health"),
     path("admin/", admin.site.urls),
+    path("data/", data_site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("items/", include("apps.catalog.urls")),
+    path("transfers/", include("apps.transfers.urls")),
+    path("payments/", include("apps.payments.urls")),
+    path("loans/", include("apps.loans.urls")),
 ]

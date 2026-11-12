@@ -1,0 +1,30 @@
+{% extends "loans/base.html" %}
+{% block title %}站内通知{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>站内通知</h1><p class="muted">查看身份审核、物品流转和借用提醒。</p></div><span class="badge{% if unread_count %} warn{% endif %}">{{ unread_count }} 条未读</span></header>
+<nav class="filters" aria-label="通知筛选">
+  <a class="filter" href="{% url 'loans:notifications' %}"{% if not unread_only %} aria-current="true"{% endif %}>全部通知</a>
+  <a class="filter" href="{% url 'loans:notifications' %}?view=unread"{% if unread_only %} aria-current="true"{% endif %}>只看未读</a>
+</nav>
+{% if page_obj.object_list %}
+  <ul class="notices">
+    {% for notification in page_obj %}
+      <li class="card{% if not notification.read_at %} unread{% endif %}">
+        <div class="notice-head"><h2>{{ notification.title }}</h2><time class="hint" datetime="{{ notification.created_at|date:'c' }}">{{ notification.created_at|date:"Y-m-d H:i" }}</time></div>
+        {% if notification.body %}<p>{{ notification.body }}</p>{% endif %}
+        <div class="notice-foot">
+          <span class="badge neutral">{{ notification.get_business_kind_display }}</span>
+          {% if notification.read_at %}<span class="hint">已读</span>
+          {% else %}
+            <form method="post" action="{% url 'loans:mark_notification_read' notification.pk %}">
+              {% csrf_token %}{% if unread_only %}<input type="hidden" name="view" value="unread">{% endif %}
+              <button type="submit" class="secondary compact">标记已读</button>
+            </form>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+  {% include "includes/pagination.html" %}
+{% else %}<div class="empty-state"><h2>{% if unread_only %}没有未读通知{% else %}暂无通知{% endif %}</h2><p>审核和流转状态有更新时，你会在这里收到提醒。</p></div>{% endif %}
+{% endblock %}

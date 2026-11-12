@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}我的流转{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>我的流转</h1><p class="muted">查看预留、交付和已经结束的流转。</p></div><a class="button secondary" href="{% url 'transfers:my_applications' %}">查看我的申请</a></header>
+{% if transfers %}
+  <ul class="record-list">
+    {% for transfer in transfers %}
+      <li>
+        <div><a href="{% url 'transfers:transfer_detail' transfer.id %}">{{ transfer.item.name }}</a><small>{{ transfer.get_kind_display }} · {% if user.id == transfer.owner_id %}我是物主{% else %}我是获选方{% endif %} · {{ transfer.reserved_at|date:"Y-m-d H:i" }}</small></div>
+        {% if transfer.revoke_status == 'negotiating' %}<span class="badge warn">撤销协商中</span>{% else %}<span class="badge">{{ transfer.get_status_display }}</span>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty-state"><div class="empty-icon" aria-hidden="true">↔</div><h2>还没有流转记录</h2><p>物主选中一位申请人后，双方可以在这里查看进度。</p><a class="button secondary" href="{% url 'transfers:my_applications' %}">查看我的申请</a></div>
+{% endif %}
+{% endblock %}

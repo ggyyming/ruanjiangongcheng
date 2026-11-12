@@ -1,11 +1,18 @@
 {% extends "base.html" %}
 {% block title %}登录{% endblock %}
 {% block content %}
-<h2>登录</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">登录</button>
-</form>
-<p>还没有账号？<a href="{% url 'accounts:register' %}">注册</a></p>
+<section class="auth-shell">
+  <div class="card">
+    <p class="eyebrow"><span></span> 校园流转</p>
+    <h1>登录</h1>
+    <p class="muted">登录后可查看个人物品、流转记录和站内通知。</p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit">登录</button>
+    </form>
+  </div>
+  <p class="muted">还没有账号？ <a href="{% url 'accounts:register' %}">注册账号</a></p>
+</section>
 {% endblock %}

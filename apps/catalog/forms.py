@@ -1,4 +1,5 @@
 """物品表单（CP-D-03：公开字段与私密字段；流转类型对应的价格规则）。"""
+
 from django import forms
 
 from .models import Item
@@ -24,6 +25,13 @@ class ItemForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
             "flaws": forms.Textarea(attrs={"rows": 2}),
         }
+        labels = {
+            "flow_type": "流转方式",
+            "deposit_display": "参考押金（元）",
+            "contact": "联系方式",
+            "location": "具体交付地点",
+        }
+        help_texts = {"deposit_display": "实际押金由物主和借用者共同确认。"}
 
     def clean(self):
         cleaned = super().clean()
@@ -32,7 +40,7 @@ class ItemForm(forms.ModelForm):
         deposit = cleaned.get("deposit_display")
         if flow_type == Item.FlowType.SALE:
             if not price:
-                self.add_error("price", "出售必须填写价格")
+                self.add_error("price", "出售必须填写价格，且金额须大于零。")
             if deposit is not None:
                 self.add_error("deposit_display", "出售物品不填写押金展示")
         elif flow_type == Item.FlowType.GIFT:
@@ -42,5 +50,5 @@ class ItemForm(forms.ModelForm):
             if price is not None:
                 self.add_error("price", "出借物品不填写出售价格")
             if not deposit:
-                self.add_error("deposit_display", "出借须填写押金展示金额")
+                self.add_error("deposit_display", "请填写大于零的参考押金。")
         return cleaned

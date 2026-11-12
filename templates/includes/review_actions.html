@@ -1,0 +1,10 @@
+<form class="card" method="post">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="field">{{ form.reason.label_tag }}{{ form.reason }}{{ form.reason.errors }}</div>
+  <p class="hint">选择驳回时，请填写原因。申请人可以查看这份说明。</p>
+  <div class="actions">
+    <button type="submit" name="approve" value="on">通过审核</button>
+    <button class="secondary" type="submit" name="approve" value="">驳回申请</button>
+  </div>
+</form>

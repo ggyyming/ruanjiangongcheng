@@ -1,4 +1,5 @@
 """账号与认证表单（CP-D-01：姓名、学号或工号、院系或部门，不上传证件图片）。"""
+
 from django import forms
 
 from .models import IdentityApplication
@@ -18,7 +19,10 @@ class IdentityForm(forms.ModelForm):
 class ReviewForm(forms.Form):
     approve = forms.BooleanField(required=False, label="审核通过")
     reason = forms.CharField(
-        required=False, label="结论/驳回原因", widget=forms.Textarea(attrs={"rows": 3})
+        required=False,
+        label="驳回原因",
+        max_length=200,
+        widget=forms.Textarea(attrs={"rows": 3}),
     )
 
     def clean(self):
@@ -29,7 +33,9 @@ class ReviewForm(forms.Form):
 
 
 class RevokeForm(forms.Form):
-    reason = forms.CharField(label="撤销原因", widget=forms.Textarea(attrs={"rows": 3}))
+    reason = forms.CharField(
+        label="撤销原因", max_length=200, widget=forms.Textarea(attrs={"rows": 3})
+    )
 
     def clean_reason(self):
         reason = self.cleaned_data["reason"].strip()

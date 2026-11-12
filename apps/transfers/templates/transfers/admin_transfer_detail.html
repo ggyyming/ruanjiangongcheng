@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}流转记录详情{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'transfers:admin_transfer_list' %}">← 流转记录</a>
+<header class="page-header">
+  <div>
+    <p class="eyebrow"><span></span> 管理工作台 · {{ transfer.get_kind_display }}</p>
+    <h1>{{ transfer.item.name }}</h1>
+    <p class="muted">流转编号 {{ transfer.pk }} · 管理员查看</p>
+  </div>
+  {% if transfer.revoke_status == 'negotiating' %}
+    <span class="badge warn">撤销协商中</span>
+  {% else %}
+    <span class="badge">{{ transfer.get_status_display }}</span>
+  {% endif %}
+</header>
+<div class="split">
+  <section>
+    <h2>流转进度</h2>
+    {% if events %}
+      <ol class="record-list">
+        {% for event in events %}
+          <li>
+            <div><strong>{{ event.action_label }}</strong><small>{{ event.actor.username|default:"系统" }}</small></div>
+            <time class="muted" datetime="{{ event.created_at|date:'c' }}">{{ event.created_at|date:"Y-m-d H:i" }}</time>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <div class="empty-state"><p>暂无操作记录。</p></div>
+    {% endif %}
+  </section>
+  <section class="card">
+    <h2>流转信息</h2>
+    <dl class="facts">
+      <dt>物主</dt><dd>{{ transfer.owner.username }}</dd>
+      <dt>获选方</dt><dd>{{ transfer.recipient.username }}</dd>
+      <dt>预留时间</dt><dd>{{ transfer.reserved_at|date:"Y-m-d H:i" }}</dd>
+      <dt>物主确认</dt><dd>{{ transfer.owner_confirmed_at|date:"Y-m-d H:i"|default:"未确认" }}</dd>
+      <dt>获选方确认</dt><dd>{{ transfer.recipient_confirmed_at|date:"Y-m-d H:i"|default:"未确认" }}</dd>
+      {% if agreement %}<dt>借用状态</dt><dd>{{ agreement.get_status_display }}</dd>{% endif %}
+      {% if transfer.cancelled_at %}<dt>取消时间</dt><dd>{{ transfer.cancelled_at|date:"Y-m-d H:i" }}</dd>{% endif %}
+    </dl>
+    <a class="button secondary" href="{% url 'market_data:transfers_transfer_change' transfer.pk %}">查询完整资料</a>
+  </section>
+</div>
+{% endblock %}

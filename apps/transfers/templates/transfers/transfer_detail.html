@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}流转详情{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'transfers:my_transfers' %}">← 我的流转</a>
+<header class="page-header">
+  <div><p class="eyebrow"><span></span> {{ transfer.get_kind_display }} · {% if is_owner %}我是物主{% else %}我是获选方{% endif %}</p><h1>{{ transfer.item.name }}</h1><p class="muted">流转编号 {{ transfer.pk }}</p></div>
+  {% if transfer.revoke_status == 'negotiating' %}<span class="badge warn">撤销协商中</span>{% else %}<span class="badge">{{ transfer.get_status_display }}</span>{% endif %}
+</header>
+<div class="split">
+  <div>
+    <section class="card">
+      <h2>交付进度</h2>
+      <div class="steps">
+        <span>物主 · {% if transfer.owner_confirmed_at %}已确认{% else %}待确认{% endif %}</span>
+        <span>获选方 · {% if transfer.recipient_confirmed_at %}已确认{% else %}待确认{% endif %}</span>
+      </div>
+      {% if awaiting_delivery %}
+        {% if my_confirmation %}
+          <p class="muted">你已确认交付，正在等待对方确认。</p>
+        {% elif delivery_block %}
+          <p class="notice">{{ delivery_block }}</p>
+        {% else %}
+          <p class="hint">完成线下交接后，请确认你这一方已交付或收到物品。</p>
+          <form method="post" action="{% url 'transfers:confirm_delivery' transfer.id %}">{% csrf_token %}
+            <button type="submit">{% if is_owner %}确认已交付{% else %}确认已收到{% endif %}</button>
+          </form>
+        {% endif %}
+      {% elif transfer.status == 'cancelled' %}
+        <p class="muted">这笔流转已取消。</p>
+      {% elif transfer.status == 'revoked' %}
+        <p class="muted">撤销已生效。</p>
+      {% elif transfer.both_confirmed %}
+        <p class="muted">双方已确认交付。</p>
+      {% else %}
+        <p class="muted">交付确认已暂停，等待撤销协商结果。</p>
+      {% endif %}
+    </section>
+    {% if awaiting_delivery %}
+      <details class="card">
+        <summary>{% if transfer.owner_confirmed_at or transfer.recipient_confirmed_at %}需要撤销这笔流转？{% else %}需要取消这笔流转？{% endif %}</summary>
+        {% if transfer.owner_confirmed_at or transfer.recipient_confirmed_at %}
+          <p class="hint">已有一方确认交付。需要双方协商，并分别确认物品去向。</p>
+          <form method="post" action="{% url 'transfers:start_revoke' transfer.id %}">{% csrf_token %}{{ reason_form.as_p }}<button class="secondary" type="submit">发起撤销协商</button></form>
+        {% else %}
+          <p class="hint">取消后，本次预留将结束。若已付款，可在资金明细查看退款进度。</p>
+          <form method="post" action="{% url 'transfers:cancel' transfer.id %}">{% csrf_token %}{{ reason_form.as_p }}<button class="danger" type="submit">取消流转</button></form>
+        {% endif %}
+      </details>
+    {% elif transfer.revoke_status == 'negotiating' and revocation %}
+      <section class="card">
+        <h2>撤销协商</h2>
+        <p class="pre">{{ revocation.reason }}</p>
+        <p>物主：{{ revocation.get_owner_direction_display|default:"待确认" }} · 获选方：{{ revocation.get_recipient_direction_display|default:"待确认" }}</p>
+        {% if revocation.owner_direction and revocation.recipient_direction and revocation.owner_direction != revocation.recipient_direction %}
+          <p class="notice warn">双方填写的物品去向不一致，撤销暂未生效。核对后，可由双方撤回本次协商，再重新发起。</p>
+        {% endif %}
+        {% if my_withdrawal %}
+          <p class="hint">你已同意撤回协商，正在等待对方确认。</p>
+        {% elif withdrawal_pending %}
+          <p class="notice">对方已提出撤回协商。你同意后，原有的交付确认会保留，流转可以继续。</p>
+          <form method="post" action="{% url 'transfers:withdraw_revoke' transfer.id %}">{% csrf_token %}<button class="secondary" type="submit">同意撤回协商</button></form>
+        {% else %}
+          {% if not my_direction %}
+            <form method="post" action="{% url 'transfers:declare_direction' transfer.id %}">{% csrf_token %}{{ direction_form.as_p }}<button class="secondary" type="submit">确认物品去向</button></form>
+          {% endif %}
+          <div class="actions">
+            {% if not my_revoke_agreement %}
+              <form method="post" action="{% url 'transfers:agree_revoke' transfer.id %}">{% csrf_token %}<button type="submit">同意撤销</button></form>
+            {% endif %}
+            <form method="post" action="{% url 'transfers:withdraw_revoke' transfer.id %}">{% csrf_token %}<button class="secondary" type="submit">同意撤回协商</button></form>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+  </div>
+  <aside class="card">
+    <h2>相关信息</h2>
+    <dl class="facts">
+      <dt>物主</dt><dd>{{ transfer.owner.username }}</dd>
+      <dt>获选方</dt><dd>{{ transfer.recipient.username }}</dd>
+      <dt>预留时间</dt><dd>{{ transfer.reserved_at|date:"Y-m-d H:i" }}</dd>
+    </dl>
+    <div class="actions">
+      {% if transfer.status == 'reserved' or transfer.status == 'borrowed' %}
+        <a class="button secondary" href="{% url 'items:detail' transfer.item_id %}">查看交付信息</a>
+      {% endif %}
+      {% if agreement %}<a class="button secondary" href="{% url 'loans:detail' agreement.pk %}">查看借用详情</a>{% endif %}
+      {% if transfer.kind != 'donation' %}<a class="button secondary" href="{% url 'payments:payments_for_transfer' transfer.id %}">查看模拟资金明细</a>{% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

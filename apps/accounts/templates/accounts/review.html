@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 {% block title %}审核身份申请{% endblock %}
 {% block content %}
-<h2>审核身份申请</h2>
-<dl>
-  <dt>申请人账号</dt><dd>{{ application.user.username }}</dd>
-  <dt>姓名</dt><dd>{{ application.name }}</dd>
-  <dt>学号或工号</dt><dd>{{ application.staff_no }}</dd>
-  <dt>院系或部门</dt><dd>{{ application.department }}</dd>
-  <dt>提交时间</dt><dd>{{ application.created_at|date:"Y-m-d H:i" }}</dd>
-</dl>
-<form method="post">
-  {% csrf_token %}
-  <p><label><input type="checkbox" name="approve"> 审核通过</label></p>
-  <p><label>结论/驳回原因：<textarea name="reason" rows="3"></textarea></label></p>
-  <button type="submit">提交审核</button>
-</form>
+<div class="form-shell">
+  <a class="back-link" href="{% url 'accounts:review_list' %}">← 身份审核</a>
+  <header class="page-header"><div><h1>审核身份申请</h1><p class="muted">核对申请资料后，记录审核结果。</p></div><span class="badge warn">{{ application.get_status_display }}</span></header>
+  <dl class="facts">
+    <dt>申请人账号</dt><dd>{{ application.user.username }}</dd>
+    <dt>姓名</dt><dd>{{ application.name }}</dd>
+    <dt>学号或工号</dt><dd>{{ application.staff_no }}</dd>
+    <dt>院系或部门</dt><dd>{{ application.department }}</dd>
+    <dt>提交时间</dt><dd>{{ application.created_at|date:"Y-m-d H:i" }}</dd>
+    {% if application.review_reason %}<dt>处理说明</dt><dd>{{ application.review_reason }}</dd>{% endif %}
+  </dl>
+  {% if application.status == '待审核' %}{% include "includes/review_actions.html" %}{% endif %}
+</div>
 {% endblock %}

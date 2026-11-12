@@ -1,4 +1,5 @@
 """账号与认证路由（A 包，路径 /accounts/）。"""
+
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
@@ -19,5 +20,6 @@ urlpatterns = [
     path("identity/<int:application_id>/", views.identity_detail, name="identity_detail"),
     path("review/", views.review_list, name="review_list"),
     path("review/<int:application_id>/", views.review, name="review"),
+    path("review/<int:application_id>/claim/", views.claim_review, name="claim_review"),
     path("revoke/<int:user_id>/", views.revoke, name="revoke"),
 ]

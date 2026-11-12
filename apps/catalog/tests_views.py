@@ -1,4 +1,5 @@
 """物品市场页面测试（CP-R-08、CP-D-03/05/10/11）。"""
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -76,14 +77,14 @@ class PublishAndReviewTest(TestCase):
         self.assertNotContains(resp, "QQ 12345")
         self.assertNotContains(resp, "东区食堂门口")
 
-    def test_owner_sees_private_fields(self):
+    def test_owner_detail_hides_private_fields_before_reservation(self):
         user = make_verified_user()
         item = Item.objects.create(
             owner=user, display_status=Item.DisplayStatus.AVAILABLE, **ITEM_FIELDS
         )
         self.client.force_login(user)
         resp = self.client.get(reverse("items:detail", args=[item.id]))
-        self.assertContains(resp, "QQ 12345")
+        self.assertNotContains(resp, "QQ 12345")
 
     def test_reject_requires_reason(self):
         user = make_verified_user()

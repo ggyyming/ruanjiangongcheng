@@ -1,38 +1,67 @@
 {% extends "base.html" %}
 {% block title %}{{ item.name }}{% endblock %}
 {% block content %}
-<h2>{{ item.name }}</h2>
-<p>状态：{{ item.get_display_status_display }}{% if item.review_reason %}（{{ item.review_reason }}）{% endif %}</p>
-<dl>
-  <dt>类别</dt><dd>{{ item.category }}</dd>
-  <dt>描述</dt><dd>{{ item.description }}</dd>
-  {% if item.flaws %}<dt>瑕疵</dt><dd>{{ item.flaws }}</dd>{% endif %}
-  <dt>流转类型</dt><dd>{{ item.get_flow_type_display }}</dd>
-  {% if item.price %}<dt>价格</dt><dd>¥{{ item.price }}</dd>{% endif %}
-  {% if item.deposit_display %}<dt>押金展示</dt><dd>¥{{ item.deposit_display }}</dd>{% endif %}
-  <dt>物主昵称</dt><dd>{{ item.owner_nickname }}</dd>
-  <dt>校内区域</dt><dd>{{ item.campus_area }}</dd>
-  {% if show_private %}
-    <dt>联系方式（私密，仅预留后双方可见）</dt><dd>{{ item.contact }}</dd>
-    <dt>具体地点（私密）</dt><dd>{{ item.location }}</dd>
-  {% endif %}
-</dl>
-{% if is_owner %}
-  {% if item.display_status == "可申请" %}
-    <form method="post" action="{% url 'items:offline' item.id %}" style="display:inline">
-      {% csrf_token %}<button type="submit">下架</button>
-    </form>
-  {% endif %}
-  {% if item.display_status == "已下架" %}
-    <form method="post" action="{% url 'items:relist' item.id %}" style="display:inline">
-      {% csrf_token %}<button type="submit">申请重新上架</button>
-    </form>
-  {% endif %}
-  {% if item.display_status != "已下架" %}
-    <a href="{% url 'items:edit' item.id %}">修改</a>
-  {% endif %}
-{% endif %}
-{% if is_staff and item.display_status == "待审核" %}
-  <a href="{% url 'items:review' item.id %}">去审核</a>
-{% endif %}
+<a class="back-link" href="{% url 'items:list' %}">← 物品市场</a>
+<header class="page-header">
+  <div>
+    <p class="eyebrow"><span></span> {{ item.get_flow_type_display }} · {{ item.category }}</p>
+    <h1>{{ item.name }}</h1>
+    <p class="muted">{{ item.campus_area }} · 物主 {{ item.owner_nickname }}</p>
+  </div>
+  <span class="badge{% if not public %} neutral{% endif %}">{{ status_label }}</span>
+</header>
+<div class="split">
+  <div>
+    <section class="card">
+      <h2>物品介绍</h2><p class="pre">{{ item.description }}</p>
+      {% if item.flaws %}<h3>使用痕迹与瑕疵</h3><p class="pre">{{ item.flaws }}</p>{% endif %}
+    </section>
+    {% if item.review_reason and is_owner %}
+      <section class="notice warn"><h2>审核说明</h2><p>{{ item.review_reason }}</p></section>
+    {% endif %}
+    {% if show_private %}
+      <section class="card">
+        <h2>交付信息</h2>
+        <p class="hint">这部分信息仅本次流转双方可见。</p>
+        <dl class="facts"><dt>联系方式</dt><dd>{{ item.contact|default:"未填写" }}</dd><dt>交付地点</dt><dd>{{ item.location|default:"未填写" }}</dd></dl>
+        <a href="{% url 'transfers:transfer_detail' transfer.id %}">查看流转进度 →</a>
+      </section>
+    {% endif %}
+  </div>
+  <aside class="card" aria-label="物品操作">
+    <h2>流转方式</h2>
+    {% if item.flow_type == '出售' %}<p class="price-line">{% if item.price is not None %}¥{{ item.price }}{% else %}价格待确认{% endif %}</p>
+    {% elif item.flow_type == '出借' %}<p class="price-line">{% if item.deposit_display is not None %}¥{{ item.deposit_display }}{% else %}押金待约定{% endif %}</p><p class="hint">实际押金金额以双方约定为准。</p>
+    {% else %}<p class="price-line">免费赠送</p>{% endif %}
+    {% if can_apply %}
+      <form method="post" action="{% url 'transfers:apply' item.id %}">
+        {% csrf_token %}
+        <button type="submit">{% if item.flow_type == '出售' %}申请购买{% elif item.flow_type == '出借' %}申请借用{% else %}申请领取{% endif %}</button>
+      </form>
+    {% elif pending %}
+      <p class="hint">你已提交申请，正在等待物主选择。</p><a class="button secondary" href="{% url 'transfers:my_applications' %}">查看我的申请</a>
+    {% elif restricted and not is_owner %}
+      <p class="hint">你目前有逾期借用待处理。完成相关归还或争议处理后可再次申请借用。</p><a class="button secondary" href="{% url 'loans:list' %}">查看我的借用</a>
+    {% elif not user.is_authenticated and public %}
+      <a class="button" href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">登录后申请</a>
+    {% elif public and not verified and not is_owner and not is_staff %}
+      <p class="hint">通过校内身份审核后即可申请。</p><a class="button secondary" href="{% url 'accounts:home' %}">查看认证状态</a>
+    {% endif %}
+    {% if is_owner %}
+      <div class="actions">
+        <a class="button secondary" href="{% url 'transfers:applications_for_item' item.id %}">查看申请</a>
+        {% if can_manage %}
+          <a class="button secondary" href="{% url 'items:edit' item.id %}">修改物品</a>
+          {% if item.display_status == '可申请' %}
+            <form method="post" action="{% url 'items:offline' item.id %}">{% csrf_token %}<button class="secondary" type="submit">下架</button></form>
+          {% elif item.display_status == '已下架' %}
+            <form method="post" action="{% url 'items:relist' item.id %}">{% csrf_token %}<button type="submit">申请重新上架</button></form>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% elif is_staff and item.display_status == '待审核' %}
+      <a class="button" href="{% url 'items:review' item.id %}">审核物品</a>
+    {% endif %}
+  </aside>
+</div>
 {% endblock %}

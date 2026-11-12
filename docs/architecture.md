@@ -18,12 +18,14 @@ ruanjiangongcheng/
 ├─ uv.lock
 ├─ manage.py
 ├─ config/             # Django 全局配置
-├─ apps/               # 业务模块，选题确定后创建
+├─ apps/               # 当前整合版的业务应用
 ├─ docs/               # 需求与设计文档
 └─ .venv/              # 本地环境，不提交
 ```
 
 每个业务领域对应 `apps/` 下的一个 Django 应用。模型、表单、视图和路由优先保留在所属应用内；只有出现真实的跨应用复用需求时，才提取公共服务或工具。
+
+当前整合版包含 accounts、catalog、transfers、payments、loans 五个应用。模块入口与历史交接包的位置见[工程索引](../PROJECT_INDEX.md)。跨模块集成测试位于 [tests](../tests/)。
 
 ## 演进顺序
 

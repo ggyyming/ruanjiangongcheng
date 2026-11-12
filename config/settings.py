@@ -40,7 +40,12 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.accounts",
     "apps.catalog",
+    "apps.transfers",
+    "apps.payments",
+    "apps.loans",
 ]
+
+LOGIN_URL = "accounts:login"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
