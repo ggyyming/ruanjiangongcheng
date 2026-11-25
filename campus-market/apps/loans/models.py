@@ -286,7 +286,40 @@ class DisputeEvent(models.Model):
             "admin_viewed": "管理员查看材料",
             "admin_closed": "管理员结束处理",
             "closed": "争议已关闭",
+            "attachment_added": "补充附件",
         }.get(self.action, "更新处理记录")
+
+
+class DisputeAttachment(models.Model):
+    """争议补充图片证据；原件只经受控下载视图访问（CP-R-26、CP-D-22）。"""
+
+    MAX_PER_DISPUTE = 5
+    MAX_BYTES = 5 * 1024 * 1024
+    MAX_DIMENSION = 4096
+    FORMATS = {"JPEG": (".jpg", "image/jpeg"), "PNG": (".png", "image/png")}
+
+    dispute = models.ForeignKey(
+        Dispute, on_delete=models.CASCADE, related_name="attachments", verbose_name="争议"
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="loan_dispute_attachments",
+        verbose_name="上传人",
+    )
+    original_name = models.CharField(max_length=255, verbose_name="文件名")
+    content_type = models.CharField(max_length=32, verbose_name="内容类型")
+    size = models.PositiveBigIntegerField(verbose_name="大小（字节）")
+    storage_key = models.CharField(max_length=255, unique=True, verbose_name="存储键")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="上传时间")
+
+    class Meta:
+        verbose_name = "争议附件"
+        verbose_name_plural = "争议附件"
+        ordering = ("created_at", "pk")
+
+    def __str__(self):
+        return self.original_name
 
 
 class BorrowRestriction(models.Model):

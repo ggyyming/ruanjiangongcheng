@@ -1,8 +1,11 @@
 """借用、延期、逾期、争议与通知的业务规则（CP-R-03/04/14-18/26/27）。"""
 
+import os
 from decimal import Decimal
+from uuid import uuid4
 
 from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
@@ -10,6 +13,7 @@ from .models import (
     BorrowAgreement,
     BorrowRestriction,
     Dispute,
+    DisputeAttachment,
     DisputeEvent,
     ExtensionRequest,
     Notification,
@@ -460,6 +464,35 @@ def open_dispute(agreement, actor, kind, description, materials=""):
         body="争议材料仅当事双方及负责处理的管理员可见。",
     )
     return dispute
+
+
+@transaction.atomic
+def add_dispute_attachment(dispute, actor, upload):
+    """当事双方在争议处理中补充图片证据；关闭后只保留受控下载（CP-D-22）。"""
+    dispute = Dispute.objects.select_for_update().select_related("agreement").get(pk=dispute.pk)
+    if not dispute.is_party(actor):
+        raise PermissionDenied("仅本次争议的当事双方可以补充材料。")
+    if dispute.status != Dispute.Status.OPEN:
+        raise LoanError("争议已关闭，不能补充附件。")
+    if dispute.attachments.count() >= DisputeAttachment.MAX_PER_DISPUTE:
+        raise LoanError("每个争议最多保存五份附件。")
+
+    extension, content_type = DisputeAttachment.FORMATS[upload.image_format]
+    storage_key = default_storage.save(f"disputes/{uuid4().hex}{extension}", upload)
+    try:
+        attachment = DisputeAttachment.objects.create(
+            dispute=dispute,
+            uploaded_by=actor,
+            original_name=os.path.basename(upload.name.replace("\\", "/"))[:255],
+            content_type=content_type,
+            size=upload.size,
+            storage_key=storage_key,
+        )
+    except Exception:
+        default_storage.delete(storage_key)
+        raise
+    _log(dispute, "attachment_added", actor, attachment.original_name)
+    return attachment
 
 
 @transaction.atomic

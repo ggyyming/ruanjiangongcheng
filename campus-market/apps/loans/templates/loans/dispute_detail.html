@@ -21,6 +21,28 @@
 </section>
 
 <section class="card">
+  <h2>补充图片证据</h2>
+  <ul class="plain">
+    {% for attachment in attachments %}
+      <li>
+        {{ attachment.created_at|date:"Y-m-d H:i" }} · {{ attachment.uploaded_by }} · {{ attachment.original_name }} · {{ attachment.size|filesizeformat }}
+        <a href="{% url 'loans:download_attachment' dispute.pk attachment.pk %}">下载</a>
+      </li>
+    {% empty %}
+      <li class="hint">暂无附件。</li>
+    {% endfor %}
+  </ul>
+  {% if dispute.status == "open" and is_party %}
+    <form method="post" action="{% url 'loans:add_attachment' dispute.pk %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ attachment_form.as_p }}
+      <button type="submit">上传附件</button>
+    </form>
+    <p class="hint">每份不超过 5 MiB，JPEG 或 PNG，宽高各不超过 4096 像素；每个争议最多五份。</p>
+  {% endif %}
+</section>
+
+<section class="card">
   <h2>赔偿或退款方案</h2>
   {% if dispute.plan %}
     <p class="pre">{{ dispute.plan }}</p>

@@ -19,6 +19,20 @@
 </section>
 
 <section class="card">
+  <h2>补充图片证据</h2>
+  <ul class="plain">
+    {% for attachment in attachments %}
+      <li>
+        {{ attachment.created_at|date:"Y-m-d H:i" }} · {{ attachment.uploaded_by }} · {{ attachment.original_name }} · {{ attachment.size|filesizeformat }}
+        <a href="{% url 'loans:download_attachment' dispute.pk attachment.pk %}">下载</a>
+      </li>
+    {% empty %}
+      <li class="hint">暂无附件。</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
   <h2>履行与结束意见</h2>
   <p>
     物主已履行：{% if dispute.owner_performed_at %}{{ dispute.owner_performed_at|date:"Y-m-d H:i" }}{% else %}未确认{% endif %}

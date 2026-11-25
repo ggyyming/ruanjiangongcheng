@@ -29,6 +29,16 @@ urlpatterns = [
         name="admin_close_dispute",
     ),
     path("disputes/<int:pk>/", views.dispute_detail, name="dispute_detail"),
+    path(
+        "disputes/<int:pk>/attachments/",
+        views.add_attachment,
+        name="add_attachment",
+    ),
+    path(
+        "disputes/<int:pk>/attachments/<int:attachment_pk>/download/",
+        views.download_attachment,
+        name="download_attachment",
+    ),
     path("disputes/<int:pk>/plan/", views.record_plan, name="record_plan"),
     path(
         "disputes/<int:pk>/performed/",

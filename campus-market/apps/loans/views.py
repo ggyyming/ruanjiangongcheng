@@ -1,8 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
 from django.db.models import Exists, OuterRef, Q
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -11,8 +13,15 @@ from django.views.decorators.http import require_POST
 from apps.transfers.models import Transfer
 
 from . import services
-from .forms import AdminCloseForm, DisputeForm, DueDateForm, ExtensionForm, PlanForm
-from .models import BorrowAgreement, Dispute, DisputeEvent, Notification
+from .forms import (
+    AdminCloseForm,
+    DisputeAttachmentForm,
+    DisputeForm,
+    DueDateForm,
+    ExtensionForm,
+    PlanForm,
+)
+from .models import BorrowAgreement, Dispute, DisputeAttachment, DisputeEvent, Notification
 
 
 def _party_agreement(request, pk):
@@ -179,6 +188,43 @@ def open_dispute(request, pk):
 
 
 @login_required
+@require_POST
+def add_attachment(request, pk):
+    dispute = get_object_or_404(Dispute, pk=pk)
+    form = DisputeAttachmentForm(request.POST, request.FILES)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for error in errors:
+                messages.error(request, error)
+        return redirect("loans:dispute_detail", pk=pk)
+    try:
+        services.add_dispute_attachment(dispute, request.user, form.cleaned_data["file"])
+    except services.LoanError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "附件已上传。")
+    return redirect("loans:dispute_detail", pk=pk)
+
+
+@login_required
+def download_attachment(request, pk, attachment_pk):
+    dispute = get_object_or_404(Dispute.objects.select_related("agreement"), pk=pk)
+    if not dispute.can_view(request.user):
+        raise PermissionDenied("争议材料仅当事双方及负责处理的管理员可见。")
+    attachment = get_object_or_404(DisputeAttachment, pk=attachment_pk, dispute=dispute)
+    if not default_storage.exists(attachment.storage_key):
+        raise Http404("附件文件不存在或已被清理。")
+    response = FileResponse(
+        default_storage.open(attachment.storage_key, "rb"),
+        as_attachment=True,
+        filename=attachment.original_name,
+        content_type=attachment.content_type,
+    )
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@login_required
 def dispute_detail(request, pk):
     dispute = get_object_or_404(
         Dispute.objects.select_related("agreement", "agreement__owner", "agreement__borrower"),
@@ -193,6 +239,8 @@ def dispute_detail(request, pk):
         {
             "dispute": dispute,
             "events": dispute.events.select_related("actor"),
+            "attachments": dispute.attachments.select_related("uploaded_by"),
+            "attachment_form": DisputeAttachmentForm(),
             "plan_form": PlanForm(initial={"plan": dispute.plan}),
             "is_party": dispute.is_party(request.user),
             "performed": (
@@ -303,6 +351,7 @@ def admin_dispute_detail(request, pk):
         {
             "dispute": dispute,
             "events": dispute.events.select_related("actor"),
+            "attachments": dispute.attachments.select_related("uploaded_by"),
             "close_form": AdminCloseForm(initial={"resolution": dispute.resolution}),
         },
     )

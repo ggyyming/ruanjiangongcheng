@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 from django import forms
+from PIL import Image
 
-from .models import Dispute
+from .models import Dispute, DisputeAttachment
 
 DATETIME_INPUT_FORMATS = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"]
 
@@ -56,3 +57,26 @@ class AdminCloseForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={"rows": 3}),
     )
+
+
+class DisputeAttachmentForm(forms.Form):
+    file = forms.ImageField(
+        label="图片证据",
+        help_text="JPEG 或 PNG，不超过 5 MiB，宽高各不超过 4096 像素。",
+    )
+
+    def clean_file(self):
+        upload = self.cleaned_data["file"]
+        if upload.size > DisputeAttachment.MAX_BYTES:
+            raise forms.ValidationError("图片不能超过 5 MiB。")
+        upload.seek(0)
+        with Image.open(upload) as image:
+            image_format = image.format
+            width, height = image.size
+        upload.seek(0)
+        if image_format not in DisputeAttachment.FORMATS:
+            raise forms.ValidationError("只接受 JPEG 或 PNG 图片。")
+        if width > DisputeAttachment.MAX_DIMENSION or height > DisputeAttachment.MAX_DIMENSION:
+            raise forms.ValidationError("图片宽高各不能超过 4096 像素。")
+        upload.image_format = image_format
+        return upload
