@@ -57,8 +57,11 @@
         <h2>撤销协商</h2>
         <p class="pre">{{ revocation.reason }}</p>
         <p>物主：{{ revocation.get_owner_direction_display|default:"待确认" }} · 获选方：{{ revocation.get_recipient_direction_display|default:"待确认" }}</p>
-        {% if revocation.owner_direction and revocation.recipient_direction and revocation.owner_direction != revocation.recipient_direction %}
-          <p class="notice warn">双方填写的物品去向不一致，撤销暂未生效。核对后，可由双方撤回本次协商，再重新发起。</p>
+        {% if conflict %}
+          <p class="notice warn">双方填写的物品去向不一致，已转管理员处理。</p>
+          <p class="actions"><a class="button" href="{% url 'transfers:revocation_conflict_detail' conflict.pk %}">前往去向分歧处理</a></p>
+        {% elif revocation.owner_direction and revocation.recipient_direction and revocation.owner_direction != revocation.recipient_direction %}
+          <p class="notice warn">双方填写的物品去向不一致，撤销暂未生效。</p>
         {% endif %}
         {% if my_withdrawal %}
           <p class="hint">你已同意撤回协商，正在等待对方确认。</p>

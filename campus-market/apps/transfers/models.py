@@ -180,6 +180,85 @@ class Revocation(models.Model):
         return f"撤销协商 #{self.transfer_id} by {self.initiator}"
 
 
+class RevocationConflict(models.Model):
+    """撤销去向分歧的管理员处理入口（CP-BR-09/10、CP-R-12）。
+
+    ``Revocation`` 保存双方原始去向声明（原声明及时间在协商记录上可追溯）；
+    本模型是同一次协商的“处理记录”，认领后由负责管理员发起重新确认轮次。
+
+    状态：待认领 -> 处理中 -> 已解决 | 已关闭。
+    """
+
+    class Status(models.TextChoices):
+        OPEN = "open", "待认领"
+        IN_PROGRESS = "in_progress", "处理中"
+        RESOLVED = "resolved", "已解决"
+        CLOSED = "closed", "已关闭"
+
+    revocation = models.OneToOneField(Revocation, on_delete=models.CASCADE, related_name="conflict")
+    assigned_admin = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"撤销去向分歧 #{self.revocation_id} ({self.get_status_display()})"
+
+    @property
+    def current_round(self):
+        return self.rounds.order_by("-round_no").first()
+
+
+class RevocationRound(models.Model):
+    """一轮由负责管理员发起的去向重新确认（CP-BR-10）。
+
+    双方在本轮分别提交本人去向，只有同一轮双方声明一致才触发撤销生效。
+    ``round_no`` 用于展示轮次；表单以主键作为本轮标识，旧轮次请求被拒绝。
+    """
+
+    class Result(models.TextChoices):
+        PENDING = "pending", "待确认"
+        CONSISTENT = "consistent", "双方一致"
+        CONFLICT = "conflict", "双方仍有分歧"
+
+    conflict = models.ForeignKey(
+        RevocationConflict, on_delete=models.CASCADE, related_name="rounds"
+    )
+    round_no = models.PositiveIntegerField()
+    instruction = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    owner_direction = models.CharField(
+        max_length=16, choices=Revocation.Direction.choices, null=True, blank=True
+    )
+    owner_direction_at = models.DateTimeField(null=True, blank=True)
+    recipient_direction = models.CharField(
+        max_length=16, choices=Revocation.Direction.choices, null=True, blank=True
+    )
+    recipient_direction_at = models.DateTimeField(null=True, blank=True)
+    result = models.CharField(max_length=16, choices=Result.choices, default=Result.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["round_no"]
+
+    def __str__(self):
+        return f"撤销重新确认 #{self.conflict_id} 第{self.round_no}轮"
+
+
 class TransferLog(models.Model):
     """流转状态迁移审计留痕（CP-Q-04：重要决定保留原因与关联记录）。"""
 
@@ -210,6 +289,10 @@ class TransferLog(models.Model):
             "agree_revoke": "同意撤销",
             "withdraw_revoke": "同意撤回协商",
             "revoke_conflict": "双方物品去向不一致",
+            "claim_revoke_conflict": "认领撤销去向分歧",
+            "start_revoke_round": "发起重新确认轮次",
+            "declare_revoke_round": "轮次内确认物品去向",
+            "revoke_round_conflict": "本轮双方去向仍不一致",
             "revoke_completed": "撤销生效",
             "revoke_withdrawn": "撤销协商已撤回",
             "payment_timeout": "付款超时，预留已取消",

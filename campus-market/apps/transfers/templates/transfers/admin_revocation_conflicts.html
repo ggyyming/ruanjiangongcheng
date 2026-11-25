@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}撤销去向分歧处理{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'transfers:admin_transfer_list' %}">← 流转记录</a>
+<header class="page-header">
+  <div>
+    <p class="eyebrow"><span></span> 管理工作台</p>
+    <h1>撤销去向分歧</h1>
+    <p class="muted">双方都同意撤销、但去向声明不一致的协商，等待管理员认领处理。</p>
+  </div>
+</header>
+{% if conflicts %}
+  <ul class="record-list">
+    {% for conflict in conflicts %}
+      <li>
+        <div>
+          <a href="{% url 'transfers:admin_transfer_detail' conflict.revocation.transfer_id %}">{{ conflict.revocation.transfer.item.name }}</a>
+          <small>流转编号 {{ conflict.revocation.transfer_id }} · 协商编号 {{ conflict.revocation_id }} · {{ conflict.revocation.transfer.get_kind_display }}</small>
+          <small>物主声明：{{ conflict.revocation.get_owner_direction_display }} · 获选方声明：{{ conflict.revocation.get_recipient_direction_display }}</small>
+        </div>
+        <form method="post" action="{% url 'transfers:claim_revocation_conflict' conflict.pk %}">
+          {% csrf_token %}
+          <button type="submit">认领处理</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty-state"><h2>暂无待处理的撤销去向分歧</h2><p>双方去向声明不一致的协商会出现在这里。</p></div>
+{% endif %}
+{% endblock %}

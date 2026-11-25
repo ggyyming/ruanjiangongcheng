@@ -29,4 +29,25 @@ urlpatterns = [
     ),
     path("<int:transfer_id>/revoke/agree/", views.agree_revoke, name="agree_revoke"),
     path("<int:transfer_id>/revoke/withdraw/", views.withdraw_revoke, name="withdraw_revoke"),
+    path("conflicts/", views.admin_revocation_conflicts, name="admin_revocation_conflicts"),
+    path(
+        "conflicts/<int:conflict_id>/claim/",
+        views.claim_revocation_conflict,
+        name="claim_revocation_conflict",
+    ),
+    path(
+        "conflicts/<int:conflict_id>/",
+        views.revocation_conflict_detail,
+        name="revocation_conflict_detail",
+    ),
+    path(
+        "conflicts/<int:conflict_id>/rounds/start/",
+        views.start_revocation_round,
+        name="start_revocation_round",
+    ),
+    path(
+        "conflicts/<int:conflict_id>/rounds/<int:round_id>/declare/",
+        views.declare_revocation_round,
+        name="declare_revocation_round",
+    ),
 ]
