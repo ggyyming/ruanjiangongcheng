@@ -48,3 +48,9 @@
 验证：uv run python manage.py test apps.accounts apps.catalog → 36 项通过；ruff check apps 通过
 遗留或阻塞：见本文第 2、3 节（预存 lint 问题、B/C 依赖项、图片上传）
 ```
+
+## 5. 测试记录交付（2026-11-26）
+
+- PR #8：docs(a): A 部分测试记录（44 用例 + 实测运行结果）https://github.com/ggyyming/ruanjiangongcheng/pull/8
+- 分支 codex/a-test-record，交付提交 1c81782；测试记录位于 campus-market/apps/accounts/tests/test_record/
+- 实测：apps.accounts 16 项、apps.catalog 28 项、全项目 165 项全部通过
